@@ -295,7 +295,11 @@ jobs:
         mkdir -p release-assets
         cp target/${{ matrix.target }}/release/agentgateway release-assets/${{ matrix.binary_name }}
         cd release-assets
-        sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          shasum -a 256 ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+        else
+          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+        fi
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v2
       with:
