@@ -30,5 +30,5 @@ Run the agentgateway binary:
 ```bash
 ./target/release/agentgateway
 ```
-Open your browser and navigate to `http://localhost:19000/ui` to see the agentgateway UI.
+Open your browser and navigate to `http://localhost:15000/ui` to see the agentgateway UI.
 
