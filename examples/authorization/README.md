@@ -45,7 +45,7 @@ mcpAuthorization:
     { context.claims.nested.key == "value" };
 ```
 
-Agentgateway authorization rules are built on [Cedar Policy](https://www.cedarpolicy.com/), a small language designed for authorization policies.
+Agentgateway authorization rules are built on [CEL Policy](https://cel.dev/), a small language designed for authorization policies.
 This allows complete flexibility to define simple or advanced access rules.
 
 First, use the `example2.key`.

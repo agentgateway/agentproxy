@@ -7,7 +7,7 @@ use secrecy::SecretString;
 use serde::de::DeserializeOwned;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use std::{fs, io};
 
@@ -104,6 +104,10 @@ where
 
 pub fn ser_display<S: Serializer, T: Display>(t: &T, serializer: S) -> Result<S::Ok, S::Error> {
 	serializer.serialize_str(&t.to_string())
+}
+
+pub fn ser_debug<S: Serializer, T: Debug>(t: &T, serializer: S) -> Result<S::Ok, S::Error> {
+	serializer.serialize_str(&format!("{t:?}"))
 }
 
 pub fn ser_redact<S: Serializer, T>(t: &T, serializer: S) -> Result<S::Ok, S::Error> {

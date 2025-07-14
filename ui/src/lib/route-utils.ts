@@ -75,8 +75,7 @@ export const populateEditForm = (route: RouteType): typeof DEFAULT_HTTP_ROUTE_FO
           : "pathPrefix",
     headers: firstMatch?.headers?.map((h) => `${h.name}:${h.value.exact || ""}`).join(", ") || "",
     methods: firstMatch?.method?.method || "",
-    queryParams:
-      firstMatch?.query?.map((q) => `${q.name}=${q.value.exact || ""}`).join(", ") || "",
+    queryParams: firstMatch?.query?.map((q) => `${q.name}=${q.value.exact || ""}`).join(", ") || "",
   };
 };
 
@@ -99,7 +98,7 @@ export const getPathDisplayString = (match: Match): string => {
 
 // Get route type label
 export const getRouteTypeLabel = (route: RouteType | TcpRoute): string => {
-  return 'matches' in route ? 'HTTP' : 'TCP';
+  return "matches" in route ? "HTTP" : "TCP";
 };
 
 // Create new HTTP route object
@@ -120,9 +119,7 @@ export const createHttpRoute = (
 };
 
 // Create new TCP route object
-export const createTcpRoute = (
-  tcpRouteForm: typeof DEFAULT_TCP_ROUTE_FORM
-): TcpRoute => {
+export const createTcpRoute = (tcpRouteForm: typeof DEFAULT_TCP_ROUTE_FORM): TcpRoute => {
   const newTcpRoute: TcpRoute = {
     hostnames: parseStringArray(tcpRouteForm.hostnames),
     backends: [],
@@ -166,4 +163,4 @@ export const updateTcpRoute = (
   if (tcpRouteForm.ruleName) updatedTcpRoute.ruleName = tcpRouteForm.ruleName;
 
   return updatedTcpRoute;
-}; 
+};

@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { Bind } from "@/lib/types";
 import { BackendWithContext } from "@/lib/backend-hooks";
-import { 
+import {
   DEFAULT_BACKEND_FORM,
   BACKEND_TYPES,
   BACKEND_TABLE_HEADERS,
@@ -159,7 +159,10 @@ export const BackendTable: React.FC<BackendTableProps> = ({
                     <TableHeader>
                       <TableRow>
                         {BACKEND_TABLE_HEADERS.map((header) => (
-                          <TableHead key={header} className={header === "Actions" ? "text-right" : ""}>
+                          <TableHead
+                            key={header}
+                            className={header === "Actions" ? "text-right" : ""}
+                          >
                             {header}
                           </TableHead>
                         ))}
@@ -309,7 +312,7 @@ export const AddBackendDialog: React.FC<AddBackendDialogProps> = ({
                   Server,
                   Globe,
                 }[icon];
-                
+
                 return (
                   <Button
                     key={value}
@@ -416,7 +419,7 @@ export const AddBackendDialog: React.FC<AddBackendDialogProps> = ({
 
           {/* MCP Backend Configuration */}
           {selectedBackendType === "mcp" && (
-            <McpBackendForm 
+            <McpBackendForm
               backendForm={backendForm}
               addMcpTarget={addMcpTarget}
               removeMcpTarget={removeMcpTarget}
@@ -484,9 +487,7 @@ const ServiceBackendForm: React.FC<ServiceBackendFormProps> = ({ backendForm, se
         <Input
           id="service-hostname"
           value={backendForm.serviceHostname}
-          onChange={(e) =>
-            setBackendForm((prev) => ({ ...prev, serviceHostname: e.target.value }))
-          }
+          onChange={(e) => setBackendForm((prev) => ({ ...prev, serviceHostname: e.target.value }))}
           placeholder="my-service"
         />
       </div>
@@ -499,9 +500,7 @@ const ServiceBackendForm: React.FC<ServiceBackendFormProps> = ({ backendForm, se
         min="0"
         max="65535"
         value={backendForm.servicePort}
-        onChange={(e) =>
-          setBackendForm((prev) => ({ ...prev, servicePort: e.target.value }))
-        }
+        onChange={(e) => setBackendForm((prev) => ({ ...prev, servicePort: e.target.value }))}
         placeholder="80"
       />
     </div>
@@ -538,9 +537,7 @@ const HostBackendForm: React.FC<HostBackendFormProps> = ({ backendForm, setBacke
         <Input
           id="host-address"
           value={backendForm.hostAddress}
-          onChange={(e) =>
-            setBackendForm((prev) => ({ ...prev, hostAddress: e.target.value }))
-          }
+          onChange={(e) => setBackendForm((prev) => ({ ...prev, hostAddress: e.target.value }))}
           placeholder="192.168.1.100:8080"
         />
       </div>
@@ -551,9 +548,7 @@ const HostBackendForm: React.FC<HostBackendFormProps> = ({ backendForm, setBacke
           <Input
             id="host-hostname"
             value={backendForm.hostHostname}
-            onChange={(e) =>
-              setBackendForm((prev) => ({ ...prev, hostHostname: e.target.value }))
-            }
+            onChange={(e) => setBackendForm((prev) => ({ ...prev, hostHostname: e.target.value }))}
             placeholder="example.com"
           />
         </div>
@@ -565,9 +560,7 @@ const HostBackendForm: React.FC<HostBackendFormProps> = ({ backendForm, setBacke
             min="0"
             max="65535"
             value={backendForm.hostPort}
-            onChange={(e) =>
-              setBackendForm((prev) => ({ ...prev, hostPort: e.target.value }))
-            }
+            onChange={(e) => setBackendForm((prev) => ({ ...prev, hostPort: e.target.value }))}
             placeholder="8080"
           />
         </div>
@@ -749,9 +742,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
             key={value}
             type="button"
             variant={backendForm.aiProvider === value ? "default" : "outline"}
-            onClick={() =>
-              setBackendForm((prev) => ({ ...prev, aiProvider: value as any }))
-            }
+            onClick={() => setBackendForm((prev) => ({ ...prev, aiProvider: value as any }))}
             className="text-sm"
           >
             {label}
@@ -768,9 +759,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
         <Input
           id="ai-model"
           value={backendForm.aiModel}
-          onChange={(e) =>
-            setBackendForm((prev) => ({ ...prev, aiModel: e.target.value }))
-          }
+          onChange={(e) => setBackendForm((prev) => ({ ...prev, aiModel: e.target.value }))}
           placeholder={AI_MODEL_PLACEHOLDERS[backendForm.aiProvider]}
         />
       </div>
@@ -783,9 +772,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
           <Input
             id="ai-region"
             value={backendForm.aiRegion}
-            onChange={(e) =>
-              setBackendForm((prev) => ({ ...prev, aiRegion: e.target.value }))
-            }
+            onChange={(e) => setBackendForm((prev) => ({ ...prev, aiRegion: e.target.value }))}
             placeholder={AI_REGION_PLACEHOLDERS[backendForm.aiProvider]}
           />
         </div>
@@ -798,9 +785,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
         <Input
           id="ai-project-id"
           value={backendForm.aiProjectId}
-          onChange={(e) =>
-            setBackendForm((prev) => ({ ...prev, aiProjectId: e.target.value }))
-          }
+          onChange={(e) => setBackendForm((prev) => ({ ...prev, aiProjectId: e.target.value }))}
           placeholder="my-gcp-project"
         />
       </div>
@@ -833,9 +818,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
           <Input
             id="ai-host-address"
             value={backendForm.aiHostAddress}
-            onChange={(e) =>
-              setBackendForm((prev) => ({ ...prev, aiHostAddress: e.target.value }))
-            }
+            onChange={(e) => setBackendForm((prev) => ({ ...prev, aiHostAddress: e.target.value }))}
             placeholder="api.custom-ai-provider.com:443"
           />
         </div>
@@ -862,9 +845,7 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
               min="1"
               max="65535"
               value={backendForm.aiHostPort}
-              onChange={(e) =>
-                setBackendForm((prev) => ({ ...prev, aiHostPort: e.target.value }))
-              }
+              onChange={(e) => setBackendForm((prev) => ({ ...prev, aiHostPort: e.target.value }))}
               placeholder="443"
             />
           </div>
@@ -872,4 +853,4 @@ const AiBackendForm: React.FC<AiBackendFormProps> = ({ backendForm, setBackendFo
       )}
     </div>
   </div>
-); 
+);

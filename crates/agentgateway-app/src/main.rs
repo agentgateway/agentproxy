@@ -76,6 +76,8 @@ async fn validate(contents: String, filename: Option<PathBuf>) -> anyhow::Result
 	if let Some(cfg) = config.xds.local_config {
 		let cs = cfg.read_to_string().await?;
 		agentgateway::types::local::NormalizedLocalConfig::from(client, cs.as_str()).await?;
+	} else {
+		println!("No local configuration");
 	}
 	println!("Configuration is valid!");
 	Ok(())

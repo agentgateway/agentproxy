@@ -32,7 +32,6 @@ axum-core.workspace = true
 axum-extra.workspace = true
 base64.workspace = true
 bytes.workspace = true
-cedar-policy = "4.5.0"
 chrono.workspace = true
 clocksource.workspace = true
 crossbeam.workspace = true
@@ -113,6 +112,8 @@ x509-parser.workspace = true
 serde_urlencoded = "0.7.1"
 percent-encoding = "2.3.1"
 http-serde = "2.1.1"
+cel-parser = { git = "https://github.com/clarkmcc/cel-rust", rev = "5b02b08" }
+cel-interpreter = { git = "https://github.com/clarkmcc/cel-rust", rev = "5b02b08", features = ["json", "regex", "chrono"]  }
 
 [build-dependencies]
 anyhow.workspace = true

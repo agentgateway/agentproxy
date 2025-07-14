@@ -25,12 +25,12 @@ export const PATH_MATCH_TYPES = {
 
 export const ROUTE_TABLE_HEADERS = [
   "Name",
-  "Type", 
+  "Type",
   "Listener",
   "Hostnames",
   "Path",
   "Backends",
-  "Actions"
+  "Actions",
 ] as const;
 
 export const ROUTE_TYPE_CONFIGS = {
@@ -40,8 +40,8 @@ export const ROUTE_TYPE_CONFIGS = {
     icon: "Globe",
   },
   tcp: {
-    label: "TCP", 
+    label: "TCP",
     color: "bg-blue-500 hover:bg-blue-600 text-white",
     icon: "Server",
   },
-} as const; 
+} as const;

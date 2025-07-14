@@ -16,7 +16,7 @@ use crate::types::agent::{
 	BackendName, GatewayName, ListenerName, RouteName, RouteRuleName, Target,
 };
 use crate::types::discovery::NamespacedHostname;
-use crate::{llm, mcp};
+use crate::{cel, llm, mcp};
 
 /// AsyncLog is a wrapper around an item that can be atomically set.
 /// The intent is to provide additional info to the log after we have lost the RequestLog reference,
@@ -65,8 +65,15 @@ impl<T: Debug> Debug for AsyncLog<T> {
 	}
 }
 
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct Config {
+	pub filter: Option<Arc<cel::Expression>>,
+}
+
 #[derive(Default, Debug)]
 pub struct RequestLog {
+	pub filter: Option<cel::ExpressionCall>,
+
 	pub tracer: Option<trc::Tracer>,
 	pub metrics: Option<Arc<Metrics>>,
 
@@ -109,6 +116,11 @@ pub struct RequestLog {
 
 impl Drop for RequestLog {
 	fn drop(&mut self) {
+		if let Some(filter) = &self.filter {
+			if !filter.eval_bool() {
+				return;
+			}
+		}
 		let tcp_info = self.tcp_info.as_ref().expect("tODO");
 
 		let dur = format!("{}ms", self.start.unwrap().elapsed().as_millis());

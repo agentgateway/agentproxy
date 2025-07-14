@@ -158,6 +158,15 @@ pub struct Claims {
 	pub jwt: SecretString,
 }
 
+impl Serialize for Claims {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		self.inner.serialize(serializer)
+	}
+}
+
 impl Jwt {
 	pub async fn apply(&self, log: &mut RequestLog, req: &mut Request) -> Result<(), TokenError> {
 		let Ok(TypedHeader(Authorization(bearer))) = req

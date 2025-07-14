@@ -3,10 +3,7 @@ import { Backend, Route, Listener, Bind } from "@/lib/types";
 import { fetchConfig, updateConfig } from "@/lib/api";
 import { useServer } from "@/lib/server-context";
 import { toast } from "sonner";
-import { 
-  DEFAULT_BACKEND_FORM, 
-  DEFAULT_MCP_TARGET 
-} from "./backend-constants";
+import { DEFAULT_BACKEND_FORM, DEFAULT_MCP_TARGET } from "./backend-constants";
 import {
   getBackendType,
   populateFormFromBackend,
@@ -106,7 +103,7 @@ export const useBackendFormState = () => {
     const { backend, bind, listener, routeIndex } = backendContext;
     const backendType = getBackendType(backend);
     const formData = populateFormFromBackend(backend, bind, listener, routeIndex);
-    
+
     setSelectedBackendType(backendType);
     setBackendForm(formData);
   };
@@ -137,7 +134,7 @@ export const useBackendFormState = () => {
 
   const parseAndUpdateUrl = (index: number, url: string) => {
     const { host, port, path } = parseUrl(url);
-    
+
     setBackendForm((prev) => ({
       ...prev,
       mcpTargets: prev.mcpTargets.map((target, i) =>
@@ -225,9 +222,7 @@ export const useBackendOperations = () => {
       const config = await fetchConfig();
 
       // Use editing backend's route info or form values
-      const bindPort = editingBackend
-        ? editingBackend.bind.port
-        : parseInt(form.selectedBindPort);
+      const bindPort = editingBackend ? editingBackend.bind.port : parseInt(form.selectedBindPort);
       const routeIndex = editingBackend
         ? editingBackend.routeIndex
         : parseInt(form.selectedRouteIndex);
@@ -262,9 +257,7 @@ export const useBackendOperations = () => {
           route.backends[editingBackend.backendIndex] = newBackend;
         }
 
-        toast.success(
-          `${backendType.toUpperCase()} backend "${form.name}" updated successfully`
-        );
+        toast.success(`${backendType.toUpperCase()} backend "${form.name}" updated successfully`);
       } else {
         // Add new backend
         if (!config.binds[bindIndex].listeners[listenerIndex].routes![routeIndex].backends) {
@@ -274,9 +267,7 @@ export const useBackendOperations = () => {
           newBackend
         );
 
-        toast.success(
-          `${backendType.toUpperCase()} backend "${form.name}" added successfully`
-        );
+        toast.success(`${backendType.toUpperCase()} backend "${form.name}" added successfully`);
       }
 
       // Update the configuration
@@ -291,10 +282,7 @@ export const useBackendOperations = () => {
     }
   };
 
-  const deleteBackend = async (
-    backendContext: BackendWithContext,
-    onSuccess: () => void
-  ) => {
+  const deleteBackend = async (backendContext: BackendWithContext, onSuccess: () => void) => {
     setIsSubmitting(true);
     try {
       const config = await fetchConfig();
@@ -326,4 +314,4 @@ export const useBackendOperations = () => {
     addBackend,
     deleteBackend,
   };
-}; 
+};

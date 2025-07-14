@@ -3,18 +3,18 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Route } from "lucide-react";
-import { 
-  useRouteData, 
-  useRouteFormState, 
-  useRouteDialogs, 
-  useRouteOperations 
+import {
+  useRouteData,
+  useRouteFormState,
+  useRouteDialogs,
+  useRouteOperations,
 } from "@/lib/route-hooks";
 import { populateEditForm, populateTcpEditForm } from "@/lib/route-utils";
-import { 
-  RouteTable, 
-  AddRouteDialog, 
-  EditRouteDialog, 
-  EditTcpRouteDialog 
+import {
+  RouteTable,
+  AddRouteDialog,
+  EditRouteDialog,
+  EditTcpRouteDialog,
 } from "@/components/route/route-components";
 
 export function RouteConfig() {
@@ -53,14 +53,8 @@ export function RouteConfig() {
     closeAllDialogs,
   } = useRouteDialogs();
 
-  const {
-    isSubmitting,
-    addRoute,
-    editRoute,
-    editTcpRoute,
-    deleteRoute,
-    deleteTcpRoute,
-  } = useRouteOperations();
+  const { isSubmitting, addRoute, editRoute, editTcpRoute, deleteRoute, deleteTcpRoute } =
+    useRouteOperations();
 
   // Load routes on component mount
   useEffect(() => {
@@ -70,69 +64,56 @@ export function RouteConfig() {
   // Event handlers
   const handleAddRoute = async () => {
     if (!selectedListener) return;
-    
-    await addRoute(
-      selectedListener,
-      routeForm,
-      tcpRouteForm,
-      () => {
-        loadRoutes();
-        resetRouteForm();
-        setIsAddRouteDialogOpen(false);
-      }
-    );
+
+    await addRoute(selectedListener, routeForm, tcpRouteForm, () => {
+      loadRoutes();
+      resetRouteForm();
+      setIsAddRouteDialogOpen(false);
+    });
   };
 
   const handleEditRoute = async () => {
     if (!editingRoute) return;
-    
-    await editRoute(
-      editingRoute,
-      routeForm,
-      () => {
-        loadRoutes();
-        resetRouteForm();
-        setEditingRoute(null);
-        setIsEditRouteDialogOpen(false);
-      }
-    );
+
+    await editRoute(editingRoute, routeForm, () => {
+      loadRoutes();
+      resetRouteForm();
+      setEditingRoute(null);
+      setIsEditRouteDialogOpen(false);
+    });
   };
 
   const handleEditTcpRoute = async () => {
     if (!editingTcpRoute) return;
-    
-    await editTcpRoute(
-      editingTcpRoute,
-      tcpRouteForm,
-      () => {
-        loadRoutes();
-        resetRouteForm();
-        setEditingTcpRoute(null);
-        setIsEditTcpRouteDialogOpen(false);
-      }
-    );
+
+    await editTcpRoute(editingTcpRoute, tcpRouteForm, () => {
+      loadRoutes();
+      resetRouteForm();
+      setEditingTcpRoute(null);
+      setIsEditTcpRouteDialogOpen(false);
+    });
   };
 
-  const handleDeleteRoute = async (routeContext: typeof routes[0]) => {
+  const handleDeleteRoute = async (routeContext: (typeof routes)[0]) => {
     await deleteRoute(routeContext, () => {
       loadRoutes();
     });
   };
 
-  const handleDeleteTcpRoute = async (tcpRouteContext: typeof tcpRoutes[0]) => {
+  const handleDeleteTcpRoute = async (tcpRouteContext: (typeof tcpRoutes)[0]) => {
     await deleteTcpRoute(tcpRouteContext, () => {
       loadRoutes();
     });
   };
 
-  const handleEditRouteClick = (routeContext: typeof routes[0]) => {
+  const handleEditRouteClick = (routeContext: (typeof routes)[0]) => {
     setEditingRoute(routeContext);
     const formData = populateEditForm(routeContext.route);
     setRouteForm(formData);
     setIsEditRouteDialogOpen(true);
   };
 
-  const handleEditTcpRouteClick = (tcpRouteContext: typeof tcpRoutes[0]) => {
+  const handleEditTcpRouteClick = (tcpRouteContext: (typeof tcpRoutes)[0]) => {
     setEditingTcpRoute(tcpRouteContext);
     const formData = populateTcpEditForm(tcpRouteContext.route);
     setTcpRouteForm(formData);

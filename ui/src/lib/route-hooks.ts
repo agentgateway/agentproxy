@@ -3,10 +3,7 @@ import { Route as RouteType, TcpRoute, Listener, Bind } from "@/lib/types";
 import { fetchBinds, updateConfig, fetchConfig } from "@/lib/api";
 import { useServer } from "@/lib/server-context";
 import { toast } from "sonner";
-import { 
-  DEFAULT_HTTP_ROUTE_FORM, 
-  DEFAULT_TCP_ROUTE_FORM 
-} from "./route-constants";
+import { DEFAULT_HTTP_ROUTE_FORM, DEFAULT_TCP_ROUTE_FORM } from "./route-constants";
 import {
   isTcpListener,
   buildMatch,
@@ -331,10 +328,7 @@ export const useRouteOperations = () => {
     }
   };
 
-  const deleteRoute = async (
-    routeContext: RouteWithContext,
-    onSuccess: () => void
-  ) => {
+  const deleteRoute = async (routeContext: RouteWithContext, onSuccess: () => void) => {
     setIsSubmitting(true);
     try {
       const config = await fetchConfig();
@@ -360,10 +354,7 @@ export const useRouteOperations = () => {
     }
   };
 
-  const deleteTcpRoute = async (
-    tcpRouteContext: TcpRouteWithContext,
-    onSuccess: () => void
-  ) => {
+  const deleteTcpRoute = async (tcpRouteContext: TcpRouteWithContext, onSuccess: () => void) => {
     setIsSubmitting(true);
     try {
       const config = await fetchConfig();
@@ -397,4 +388,4 @@ export const useRouteOperations = () => {
     deleteRoute,
     deleteTcpRoute,
   };
-}; 
+};

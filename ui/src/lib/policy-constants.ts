@@ -140,4 +140,4 @@ export const POLICY_TYPES: Record<PolicyType, PolicyTypeInfo> = {
     description: "AI/LLM policy configuration",
     httpOnly: true,
   },
-}; 
+};

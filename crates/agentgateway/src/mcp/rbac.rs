@@ -1,13 +1,11 @@
 use crate::http::jwt::Claims;
 use anyhow::{Context as _, Error};
-use cedar_policy::{
-	Authorizer, Context, Entities, Entity, EntityId, EntityTypeName, EntityUid, Policy, PolicyId,
-	PolicySet, Request, RestrictedExpression,
-};
+
 use lazy_static::lazy_static;
 
 use crate::*;
 use secrecy::SecretString;
+use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use serde_json::map::Map;
@@ -21,16 +19,35 @@ use x509_parser::asn1_rs::AsTaggedExplicit;
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct RuleSet {
 	#[serde(serialize_with = "se_policies", deserialize_with = "de_policies")]
-	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
+	#[cfg_attr(feature = "schema", schemars(with = "Vec<String>"))]
 	pub rules: PolicySet,
-	#[serde(skip)]
-	authorizer: Authorizer,
+}
+
+#[derive(Clone, Debug)]
+pub struct PolicySet(Vec<Arc<cel::Expression>>);
+
+impl Default for PolicySet {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl PolicySet {
+	pub fn new() -> Self {
+		Self(Vec::new())
+	}
+	pub fn add(&mut self, p: impl Into<String>) -> Result<(), cel::Error> {
+		self.0.push(Arc::new(cel::Expression::new(p)?));
+		Ok(())
+	}
 }
 
 pub fn se_policies<S: Serializer>(t: &PolicySet, serializer: S) -> Result<S::Ok, S::Error> {
-	t.to_string()
-		.serialize(serializer)
-		.map_err(|e| serde::ser::Error::custom(e.to_string()))
+	let mut seq = serializer.serialize_seq(Some(t.0.len()))?;
+	for tt in &t.0 {
+		seq.serialize_element(&format!("{tt:?}"))?;
+	}
+	seq.end()
 }
 
 pub fn de_policies<'de: 'a, 'a, D>(deserializer: D) -> Result<PolicySet, D::Error>
@@ -38,15 +55,12 @@ where
 	D: Deserializer<'de>,
 {
 	let raw = Vec::<String>::deserialize(deserializer)?;
-	let mut policies = PolicySet::new();
-	for (idx, p) in raw.into_iter().enumerate() {
-		let pp = Policy::parse(Some(PolicyId::new(format!("policy{idx}"))), p)
-			.map_err(|e| serde::de::Error::custom(e.to_string()))?;
-		policies
-			.add(pp)
-			.map_err(|e| serde::de::Error::custom(e.to_string()))?
-	}
-	Ok(policies)
+	let parsed: Vec<_> = raw
+		.into_iter()
+		.map(|r| cel::Expression::new(r).map(Arc::new))
+		.collect::<Result<_, _>>()
+		.map_err(|e| serde::de::Error::custom(e.to_string()))?;
+	Ok(PolicySet(parsed))
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -79,10 +93,7 @@ impl RuleSets {
 
 impl RuleSet {
 	pub fn new(rules: PolicySet) -> Self {
-		Self {
-			rules,
-			authorizer: Authorizer::new(),
-		}
+		Self { rules }
 	}
 
 	// Check if the claims have access to the resource
@@ -98,52 +109,23 @@ impl RuleSet {
 
 	fn validate_internal(&self, resource: &ResourceType, claims: &Identity) -> anyhow::Result<bool> {
 		tracing::debug!("Checking RBAC for resource: {:?}", resource);
+
 		// If there are no rules, everyone has access
-		if self.rules.is_empty() {
+		if self.rules.0.is_empty() {
 			return Ok(true);
 		}
 
-		let principal = match claims.get_claim("sub", ".") {
-			Some(sub) => {
-				EntityUid::from_type_name_and_id(PRINCIPAL_NAME_USER.clone(), EntityId::new(sub))
-			},
-			None => PRINCIPAL_UID_ANONYMOUS.clone(),
-		};
-		let ctx = Context::from_json_value(
-			{
-				let mut ctx = Map::new();
-				if let Some(claim) = claims.claims.clone() {
-					ctx.insert("claims".to_string(), Value::Object(claim.inner));
-				};
-				Value::Object(ctx)
-			},
-			None,
-		)
-		.context("failed to build context")?;
-
-		let resource_entity = Entity::new(
-			resource.entity(),
-			HashMap::from([(
-				"target".to_string(),
-				RestrictedExpression::new_string(resource.target().to_string()),
-			)]),
-			HashSet::from([resource.target_entity()]),
-		)
-		.context("build entity")?;
-		let entities = Entities::from_entities([resource_entity], None)?;
-		let req = Request::new(
-			principal,
-			ACTION_CALL_TOOL.clone(),
-			resource.entity(),
-			ctx,
-			None,
-		)
-		.context("failed to build request")?;
-		tracing::trace!("authorization request: {:?}", req);
-		let resp = self.authorizer.is_authorized(&req, &self.rules, &entities);
-
-		tracing::trace!("authorization response {:?}", resp);
-		Ok(matches!(resp.decision(), cedar_policy::Decision::Allow))
+		for rule in &self.rules.0 {
+			let mut exp = cel::ExpressionCall::from_expression(rule.clone());
+			if let Some(claims) = claims.claims.as_ref() {
+				exp.with_jwt(claims)
+			}
+			exp.with_mcp(resource);
+			if exp.eval_bool() {
+				return Ok(true);
+			}
+		}
+		Ok(false)
 	}
 }
 
@@ -161,17 +143,6 @@ pub enum ResourceType {
 }
 
 impl ResourceType {
-	fn entity(&self) -> EntityUid {
-		let (n, i) = match self {
-			ResourceType::Tool(r) => (ENTITY_NAME_TOOL.clone(), EntityId::new(&r.id)),
-			ResourceType::Prompt(r) => (ENTITY_NAME_PROMPT.clone(), EntityId::new(&r.id)),
-			ResourceType::Resource(r) => (ENTITY_NAME_RESOURCE.clone(), EntityId::new(&r.id)),
-		};
-		EntityUid::from_type_name_and_id(n, i)
-	}
-	fn target_entity(&self) -> EntityUid {
-		EntityUid::from_type_name_and_id(ENTITY_NAME_TARGET.clone(), EntityId::new(self.target()))
-	}
 	fn target(&self) -> &str {
 		match self {
 			ResourceType::Tool(r) => &r.target,
@@ -187,7 +158,7 @@ impl ResourceType {
 pub struct ResourceId {
 	#[serde(default)]
 	target: String,
-	#[serde(default)]
+	#[serde(rename = "name", default)]
 	id: String,
 }
 
@@ -258,16 +229,6 @@ impl Identity {
 	}
 }
 
-lazy_static! {
-	static ref PRINCIPAL_UID_ANONYMOUS: EntityUid = "AnonymousUser::\"\"".parse().unwrap();
-	static ref PRINCIPAL_NAME_USER: EntityTypeName = "User".parse().unwrap();
-	static ref ACTION_CALL_TOOL: EntityUid = r#"Action::"call_tool""#.parse().unwrap();
-	static ref ENTITY_NAME_TARGET: EntityTypeName = "Target".parse().unwrap();
-	static ref ENTITY_NAME_TOOL: EntityTypeName = "Tool".parse().unwrap();
-	static ref ENTITY_NAME_PROMPT: EntityTypeName = "Prompt".parse().unwrap();
-	static ref ENTITY_NAME_RESOURCE: EntityTypeName = "Resource".parse().unwrap();
-}
-
-#[cfg(test)]
+#[cfg(any(test, feature = "internal_benches"))]
 #[path = "rbac_tests.rs"]
 mod tests;

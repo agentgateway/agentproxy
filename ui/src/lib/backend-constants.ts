@@ -104,4 +104,4 @@ export const AI_MODEL_PLACEHOLDERS = {
 export const AI_REGION_PLACEHOLDERS = {
   vertex: "us-central1",
   bedrock: "us-east-1",
-} as const; 
+} as const;

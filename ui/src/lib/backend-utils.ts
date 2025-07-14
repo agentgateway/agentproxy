@@ -82,7 +82,9 @@ export const getBackendName = (backend: Backend): string => {
 
 // Get backend type color
 export const getBackendTypeColor = (type: string): string => {
-  return BACKEND_TYPE_COLORS[type as keyof typeof BACKEND_TYPE_COLORS] || BACKEND_TYPE_COLORS.default;
+  return (
+    BACKEND_TYPE_COLORS[type as keyof typeof BACKEND_TYPE_COLORS] || BACKEND_TYPE_COLORS.default
+  );
 };
 
 // Get backend details for table display
@@ -159,11 +161,14 @@ export const getBackendDetails = (backend: Backend): { primary: string; secondar
     return { primary: "Dynamic routing" };
   }
 
-  return { primary: ""   };
+  return { primary: "" };
 };
 
 // Form validation functions
-export const validateCommonFields = (form: typeof DEFAULT_BACKEND_FORM, editingBackend?: boolean): boolean => {
+export const validateCommonFields = (
+  form: typeof DEFAULT_BACKEND_FORM,
+  editingBackend?: boolean
+): boolean => {
   if (!form.name.trim()) return false;
   // Only validate route selection when adding (not editing)
   if (!editingBackend && (!form.selectedBindPort || !form.selectedRouteIndex)) return false;
@@ -176,11 +181,7 @@ export const validateCommonFields = (form: typeof DEFAULT_BACKEND_FORM, editingB
 };
 
 export const validateServiceBackend = (form: typeof DEFAULT_BACKEND_FORM): boolean => {
-  return !!(
-    form.serviceNamespace.trim() &&
-    form.serviceHostname.trim() &&
-    form.servicePort.trim()
-  );
+  return !!(form.serviceNamespace.trim() && form.serviceHostname.trim() && form.servicePort.trim());
 };
 
 export const validateHostBackend = (form: typeof DEFAULT_BACKEND_FORM): boolean => {
@@ -206,10 +207,8 @@ export const validateMcpBackend = (form: typeof DEFAULT_BACKEND_FORM): boolean =
 
 export const validateAiBackend = (form: typeof DEFAULT_BACKEND_FORM): boolean => {
   if (form.aiProvider === "vertex" && !form.aiProjectId.trim()) return false;
-  if (
-    form.aiProvider === "bedrock" &&
-    (!form.aiModel.trim() || !form.aiRegion.trim())
-  ) return false;
+  if (form.aiProvider === "bedrock" && (!form.aiModel.trim() || !form.aiRegion.trim()))
+    return false;
   return true;
 };
 
@@ -242,7 +241,10 @@ export const addWeightIfNeeded = (backend: any, weight: number): any => {
   return backend;
 };
 
-export const createServiceBackend = (form: typeof DEFAULT_BACKEND_FORM, weight: number): Backend => {
+export const createServiceBackend = (
+  form: typeof DEFAULT_BACKEND_FORM,
+  weight: number
+): Backend => {
   return addWeightIfNeeded(
     {
       service: {
@@ -559,9 +561,7 @@ export const populateFormFromBackend = (
     aiProvider: backend.ai?.provider ? (Object.keys(backend.ai.provider)[0] as any) : "openAI",
     aiModel: backend.ai?.provider ? Object.values(backend.ai.provider)[0]?.model || "" : "",
     aiRegion: backend.ai?.provider ? Object.values(backend.ai.provider)[0]?.region || "" : "",
-    aiProjectId: backend.ai?.provider
-      ? Object.values(backend.ai.provider)[0]?.projectId || ""
-      : "",
+    aiProjectId: backend.ai?.provider ? Object.values(backend.ai.provider)[0]?.projectId || "" : "",
     aiHostOverrideType: backend.ai?.hostOverride?.Address
       ? "address"
       : backend.ai?.hostOverride?.Hostname

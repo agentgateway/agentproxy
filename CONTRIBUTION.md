@@ -31,8 +31,7 @@ See the [DEVELOPMENT.md](DEVELOPMENT.md) file for more information.
 
 #### Coding Standards
 
-- **Go Code**:
-  - Follow the [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
+- **Rust Code**:
   - Run `make lint` before submitting your changes
   - Ensure all tests pass with `make test`
   - Add tests for new functionality
