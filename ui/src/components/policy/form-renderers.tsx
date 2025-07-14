@@ -49,7 +49,7 @@ export function renderJwtAuthForm({ data, onChange }: FormRendererProps) {
         <Label htmlFor="jwks">JWKS URL or File Path *</Label>
         <Input
           id="jwks"
-          value={data.jwks || ""}
+          value={typeof data.jwks === "object" ? data.jwks.file : data.jwks || ""}
           onChange={(e) => onChange({ ...data, jwks: e.target.value })}
           placeholder="https://example.auth0.com/.well-known/jwks.json"
         />
