@@ -46,6 +46,14 @@ jobs:
 
     - name: Run Tests
       run: make test
+      env:
+        NAMESPACE: test-namespace
+        GATEWAY: test-gateway
+        INSTANCE_IP: 127.0.0.1
+        POD_NAME: test-pod
+        POD_NAMESPACE: test-namespace
+        NODE_NAME: test-node
+        WORKER_THREADS: 4
 
     - name: Run Lint
       run: make lint
@@ -239,6 +247,8 @@ jobs:
   trigger-release:
     needs: [create-release]
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
     - name: Trigger Release Workflow
       uses: actions/github-script@v7
