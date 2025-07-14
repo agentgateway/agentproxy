@@ -148,9 +148,16 @@ pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Resu
 	let termination_max_deadline =
 		parse_duration("CONNECTION_TERMINATION_DEADLINE")?.or(raw.connection_min_termination_deadline);
 	let otlp = empty_to_none(parse("OTLP_ENDPOINT")?).or(raw.tracing.map(|t| t.otlp_endpoint));
+	// Parse admin_addr from environment variable or config file
+	let admin_addr = parse::<String>("ADMIN_ADDR")?
+		.or(raw.admin_addr)
+		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
+		.transpose()?
+		.unwrap_or(Address::Localhost(ipv6_localhost_enabled, 15000));
+
 	Ok(crate::Config {
 		network: network.into(),
-		admin_addr: Address::Localhost(ipv6_localhost_enabled, 15000),
+		admin_addr,
 		stats_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15020)),
 		readiness_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15021)),
 		self_addr,
