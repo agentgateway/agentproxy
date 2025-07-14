@@ -1,0 +1,23 @@
+{
+    "type": "xds",
+    "xds_address": "${XDS_ADDRESS:-http://127.0.0.1:9977}",
+    "metadata": {},
+    "alt_xds_hostname": "${XDS_HOSTNAME:-agentgateway.default.svc.cluster.local}",
+    "listener": {
+      "type": "sse",
+      "host": "${AGENTGATEWAY_HOST:-0.0.0.0}",
+      "port": "${AGENTGATEWAY_PORT:-8080}",
+      "authn": {
+        "type": "jwt",
+        "issuer": ["${JWT_ISSUER:-me}"],
+        "audience": ["${JWT_AUDIENCE:-me.com}"],
+        "jwks": {
+          "type": "local",
+          "source": {
+            "type": "file",
+            "data": "${JWT_KEYS_PATH:-manifests/jwt/pub-key}"
+          }
+        }
+      }
+    }
+  }
