@@ -108,6 +108,8 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Test
       run: make test
+    - name: Validate
+      run: make validate
 
   docker:
     strategy:
@@ -148,7 +150,7 @@ jobs:
     - name: Generate and Check Diff
       id: generate
       run: |
-        make generate-apis
+        make gen
     - name: Create Diff
       if: failure()
       run: |

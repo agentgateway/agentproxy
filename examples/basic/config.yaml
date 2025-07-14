@@ -9,6 +9,7 @@ binds:
             - "*"
           allowHeaders:
             - mcp-protocol-version
+            - content-type
       backends:
       - mcp:
           name: default

@@ -11,7 +11,10 @@ use hickory_resolver::config::ResolveHosts;
 use crate::control::caclient;
 use crate::telemetry::trc;
 use crate::types::discovery::Identity;
-use crate::{Address, Config, ConfigSource, NestedRawConfig, RawConfig, XDSConfig, client, serdes};
+use crate::{
+	Address, Config, ConfigSource, NestedRawConfig, RawConfig, XDSConfig, cel, client, serdes,
+	telemetry,
+};
 
 pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Result<Config> {
 	let nested: NestedRawConfig = serdes::yamlviajson::from_str(&contents)?;
@@ -176,6 +179,14 @@ pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Resu
 			},
 		},
 		tracing: trc::Config { endpoint: otlp },
+		logging: telemetry::log::Config {
+			filter: raw
+				.logging
+				.and_then(|l| l.filter)
+				.map(|f| cel::Expression::new(&f))
+				.transpose()?
+				.map(Arc::new),
+		},
 		dns: client::Config {
 			// TODO: read from file
 			resolver_cfg,

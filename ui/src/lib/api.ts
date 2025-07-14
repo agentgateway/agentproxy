@@ -1,6 +1,6 @@
 import { Target, Listener, LocalConfig, Bind, Backend, Route } from "./types";
 
-const API_URL = "http://localhost:15000";
+const API_URL = process.env.NODE_ENV === "production" ? "" : "http://localhost:15000";
 
 /**
  * Fetches the full configuration from the agentgateway server

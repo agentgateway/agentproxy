@@ -1,0 +1,438 @@
+name: WC Automated Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'beta'
+        type: choice
+        options:
+        - beta
+        - patch
+        - minor
+        - major
+
+env:
+  CARGO_TERM_COLOR: always
+  REGISTRY_IMAGE: ghcr.io/wingedcommerce-llc/agentgateway
+
+jobs:
+  # Run all tests first
+  test-suite:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run Tests
+      run: make test
+      env:
+        NAMESPACE: test-namespace
+        GATEWAY: test-gateway
+        INSTANCE_IP: 127.0.0.1
+        POD_NAME: test-pod
+        POD_NAMESPACE: test-namespace
+        NODE_NAME: test-node
+        WORKER_THREADS: 4
+
+    - name: Run Lint
+      run: make lint
+
+  # Build on multiple platforms
+  build-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-musl
+          - os: macos-latest
+            target: aarch64-apple-darwin
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 23
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+
+    - name: Install musl-tools
+      if: ${{ matrix.os == 'ubuntu-22.04-arm' || matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+        rustup target add ${{ matrix.target }}
+
+    - name: Build
+      run: make build
+      env:
+        CARGO_BUILD_ARGS: "--target ${{ matrix.target }}"
+
+  # Check code generation
+  check-code-gen:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: go.mod
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Generate and Check Diff
+      run: make generate-apis
+
+  # Docker build test
+  docker-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Build Docker Image
+      env:
+        DOCKER_BUILDER: "docker buildx"
+      run: make docker
+
+  # Determine version and create release
+  create-release:
+    needs: [test-suite, build-test, check-code-gen, docker-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Determine Version
+      id: version
+      run: |
+        # Get current version from Cargo.toml
+        CURRENT_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Determine release type
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+        else
+          RELEASE_TYPE="beta"
+        fi
+        echo "Release type: $RELEASE_TYPE"
+        
+        # Parse version components
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+        
+        # Calculate new version based on release type
+        case $RELEASE_TYPE in
+          "major")
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+            ;;
+          "minor")
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+            ;;
+          "patch")
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            ;;
+          "beta")
+            # For beta, increment patch and add beta suffix
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))-beta.$(date +%Y%m%d%H%M%S)"
+            ;;
+        esac
+        
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create Git Tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "${{ steps.version.outputs.tag }}" -m "Automated release ${{ steps.version.outputs.tag }}"
+        git push origin "${{ steps.version.outputs.tag }}"
+
+    - name: Create Release Notes
+      id: release_notes
+      run: |
+        # Get commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log --oneline $LAST_TAG..HEAD --pretty=format:"- %s (%h)")
+        else
+          COMMITS=$(git log --oneline --pretty=format:"- %s (%h)" -10)
+        fi
+        
+        # Create release notes
+        cat > release_notes.md << EOF
+        # Release ${{ steps.version.outputs.version }}
+        
+        This is an automated release created from the main branch.
+        
+        ## Changes
+        $COMMITS
+        
+        ## Installation
+        
+        ### Binary Downloads
+        Download the appropriate binary for your platform from the assets below.
+        
+        ### Docker
+        \`\`\`bash
+        docker pull ghcr.io/wingedcommerce-llc/agentgateway:${{ steps.version.outputs.version }}
+        \`\`\`
+        
+        ### Verification
+        Each binary includes a SHA256 checksum file for verification.
+        
+        ## Documentation
+        - [README](https://github.com/agentgateway/agentgateway/blob/main/README.md)
+        - [Examples](https://github.com/agentgateway/agentgateway/tree/main/examples)
+        EOF
+
+  # Build binaries and create GitHub release
+  build-and-release:
+    needs: [create-release]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            binary_name: agentgateway-linux-amd64
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-musl
+            binary_name: agentgateway-linux-arm64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: agentgateway-darwin-arm64
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 23
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build UI
+      run: |
+        cd ui
+        npm install
+        npm run build
+    - name: Install musl-tools
+      if: ${{ matrix.os == 'ubuntu-22.04-arm' || matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+        rustup target add ${{ matrix.target }}
+    - name: Build Binary
+      run: make build
+      env:
+        CARGO_BUILD_ARGS: "--target ${{ matrix.target }}"
+    - name: Prepare Release Assets
+      run: |
+        mkdir -p release-assets
+        cp target/${{ matrix.target }}/release/agentgateway release-assets/${{ matrix.binary_name }}
+        cd release-assets
+        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          shasum -a 256 ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+        else
+          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+        fi
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ needs.create-release.outputs.tag }}
+        files: release-assets/*
+        body: |
+          # WC Fork Release ${{ needs.create-release.outputs.version }}
+          
+          This is an automated release from the WingedCommerce fork.
+          
+          ## Installation
+          
+          ### Binary Downloads
+          Download the appropriate binary for your platform from the assets below.
+          
+          ### Docker
+          ```bash
+          docker pull ghcr.io/wingedcommerce-llc/agentgateway:${{ needs.create-release.outputs.version }}
+          ```
+          
+          ### Verification
+          Each binary includes a SHA256 checksum file for verification.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # TODO: Uncomment to enable Docker image building and pushing to registry
+  # # Build and push Docker images
+  # build-docker:
+  #   needs: [create-release]
+  #   runs-on: ${{ matrix.os }}
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - platform: linux/amd64
+  #           os: ubuntu-latest
+  #         - platform: linux/arm64
+  #           os: ubuntu-22.04-arm
+  #   steps:
+  #   - name: Prepare
+  #     run: |
+  #       platform=${{ matrix.platform }}
+  #       echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
+  #   - name: Docker meta
+  #     id: meta
+  #     uses: docker/metadata-action@v5
+  #     with:
+  #       images: ${{ env.REGISTRY_IMAGE }}
+  #       tags: |
+  #         type=raw,value=${{ needs.create-release.outputs.version }}
+  #   - name: Login to GitHub Container Registry
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Set up QEMU
+  #     uses: docker/setup-qemu-action@v3
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
+  #   - name: Build and push by digest
+  #     id: build
+  #     uses: docker/build-push-action@v6
+  #     with:
+  #       platforms: ${{ matrix.platform }}
+  #       labels: ${{ steps.meta.outputs.labels }}
+  #       tags: ${{ env.REGISTRY_IMAGE }}:${{ needs.create-release.outputs.version }}
+  #       outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+  #   - name: Export digest
+  #     run: |
+  #       mkdir -p ${{ runner.temp }}/digests
+  #       digest="${{ steps.build.outputs.digest }}"
+  #       touch "${{ runner.temp }}/digests/${digest#sha256:}"
+  #   - name: Upload digest
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: digests-${{ env.PLATFORM_PAIR }}
+  #       path: ${{ runner.temp }}/digests/*
+  #       if-no-files-found: error
+  #       retention-days: 1
+
+  # # Create multi-platform Docker manifest
+  # push-docker:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   needs:
+  #     - create-release
+  #     - build-docker
+  #   steps:
+  #   - name: Download digests
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       path: ${{ runner.temp }}/digests
+  #       pattern: digests-*
+  #       merge-multiple: true
+  #   - name: Login to GitHub Container Registry
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
+  #   - name: Docker meta
+  #     id: meta
+  #     uses: docker/metadata-action@v5
+  #     with:
+  #       images: ${{ env.REGISTRY_IMAGE }}
+  #       tags: |
+  #         type=raw,value=${{ needs.create-release.outputs.version }}
+  #   - name: Create manifest list and push
+  #     working-directory: ${{ runner.temp }}/digests
+  #     run: |
+  #       docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+  #         $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+  #   - name: Inspect image
+  #     run: |
+  #       docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ needs.create-release.outputs.version }}
+
+  # Final announcement
+  announce-release:
+    needs: [create-release, build-and-release]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Announce Release
+      run: |
+        echo "🎉 Successfully created WC fork release ${{ needs.create-release.outputs.tag }}"
+        echo "📦 Binaries are available for download"
+        echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag }}"

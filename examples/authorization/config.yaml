@@ -13,13 +13,11 @@ binds:
         mcpAuthorization:
           rules:
           # Allow anyone to call 'echo'
-          - 'permit(principal, action == Action::"call_tool", resource == Tool::"echo");'
+          - 'mcp.tool.name == "echo"'
           # Only the test-user can call 'add'
-          - 'permit(principal == User::"test-user", action == Action::"call_tool", resource == Tool::"add");'
+          - 'jwt.sub == "test-user" && mcp.tool.name == "add"'
           # Any authenticated user with the claim `nested.key == value` can access 'printEnv'
-          - |
-            permit(principal is User, action == Action::"call_tool", resource == Tool::"printEnv") when 
-            { context.claims.nested.key == "value" };
+          - 'mcp.tool.name == "printEnv" && jwt.nested.key == "value"'
       backends:
       - mcp:
           name: default

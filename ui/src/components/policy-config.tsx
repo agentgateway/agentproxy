@@ -77,8 +77,6 @@ interface PolicyDialogState {
   data: any;
 }
 
-
-
 export function PolicyConfig() {
   const { refreshListeners } = useServer();
   const [binds, setBinds] = useState<Bind[]>([]);
@@ -282,8 +280,6 @@ export function PolicyConfig() {
       setIsSubmitting(false);
     }
   };
-
-
 
   const getRoutesByBind = () => {
     const routesByBind = new Map<number, RouteWithContext[]>();

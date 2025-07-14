@@ -593,11 +593,7 @@ export function renderMcpAuthenticationForm({ data, onChange }: FormRendererProp
           value={data.provider ? (data.provider.auth0 ? "auth0" : "keycloak") : ""}
           onValueChange={(value) => {
             const provider =
-              value === "auth0"
-                ? { auth0: {} }
-                : value === "keycloak"
-                  ? { keycloak: {} }
-                  : null;
+              value === "auth0" ? { auth0: {} } : value === "keycloak" ? { keycloak: {} } : null;
             onChange({ ...data, provider });
           }}
         >
@@ -618,10 +614,9 @@ export function renderMcpAuthorizationForm({ data, onChange }: FormRendererProps
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label>Cedar Authorization Rules</Label>
+        <Label>CEL Authorization Rules</Label>
         <p className="text-sm text-muted-foreground">
-          Define Cedar policy rules for MCP authorization. Each rule should be a valid Cedar
-          policy.
+          Define CEL policy rules for MCP authorization. Each rule should be a valid CEL policy.
         </p>
         {(data.rules || []).map((rule: string, index: number) => (
           <div key={index} className="space-y-2">

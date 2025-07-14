@@ -191,7 +191,7 @@ export default function PlaygroundPage() {
             const baseEndpoint = `${protocol}://${hostname}:${port}`;
 
             // Generate route path and description with better pattern recognition
-            let routePath = "/*";
+            let routePath = "/";
             let routePattern = "/*";
             let pathType = "prefix";
 
@@ -431,7 +431,6 @@ export default function PlaygroundPage() {
       if (backendType === "mcp") {
         // Connect to MCP endpoint
         setConnectionState((prev) => ({ ...prev, connectionType: "mcp" }));
-        const connectUrl = `${selectedRoute.endpoint}/sse`;
 
         const headers: Record<string, string> = {};
         if (connectionState.authToken) {
@@ -443,7 +442,7 @@ export default function PlaygroundPage() {
           { capabilities: {} }
         );
 
-        const transport = new McpSseTransport(new URL(connectUrl), {
+        const transport = new McpSseTransport(new URL("/sse", selectedRoute.endpoint), {
           eventSourceInit: {
             fetch: (url, init) => fetch(url, { ...init, headers: headers as HeadersInit }),
           },

@@ -39,23 +39,19 @@ import {
   Network,
 } from "lucide-react";
 import { Route as RouteType, TcpRoute, Listener, Bind } from "@/lib/types";
-import { 
-  CombinedRouteWithContext, 
-  RouteWithContext, 
-  TcpRouteWithContext 
-} from "@/lib/route-hooks";
-import { 
-  DEFAULT_HTTP_ROUTE_FORM, 
-  DEFAULT_TCP_ROUTE_FORM, 
+import { CombinedRouteWithContext, RouteWithContext, TcpRouteWithContext } from "@/lib/route-hooks";
+import {
+  DEFAULT_HTTP_ROUTE_FORM,
+  DEFAULT_TCP_ROUTE_FORM,
   PATH_MATCH_TYPES,
   ROUTE_TABLE_HEADERS,
-  ROUTE_TYPE_CONFIGS 
+  ROUTE_TYPE_CONFIGS,
 } from "@/lib/route-constants";
-import { 
-  isTcpListener, 
-  getPathDisplayString, 
-  populateEditForm, 
-  populateTcpEditForm 
+import {
+  isTcpListener,
+  getPathDisplayString,
+  populateEditForm,
+  populateTcpEditForm,
 } from "@/lib/route-utils";
 
 interface RouteTableProps {
@@ -139,7 +135,10 @@ export const RouteTable: React.FC<RouteTableProps> = ({
                     <TableHeader>
                       <TableRow>
                         {ROUTE_TABLE_HEADERS.map((header) => (
-                          <TableHead key={header} className={header === "Actions" ? "text-right" : ""}>
+                          <TableHead
+                            key={header}
+                            className={header === "Actions" ? "text-right" : ""}
+                          >
                             {header}
                           </TableHead>
                         ))}
@@ -287,7 +286,9 @@ interface AddRouteDialogProps {
   tcpRouteForm: typeof DEFAULT_TCP_ROUTE_FORM;
   setTcpRouteForm: React.Dispatch<React.SetStateAction<typeof DEFAULT_TCP_ROUTE_FORM>>;
   selectedListener: { listener: Listener; bind: Bind } | null;
-  setSelectedListener: React.Dispatch<React.SetStateAction<{ listener: Listener; bind: Bind } | null>>;
+  setSelectedListener: React.Dispatch<
+    React.SetStateAction<{ listener: Listener; bind: Bind } | null>
+  >;
   availableListeners: { listener: Listener; bind: Bind }[];
   onAddRoute: () => void;
   onCancel: () => void;
@@ -439,7 +440,10 @@ export const AddRouteDialog: React.FC<AddRouteDialogProps> = ({
                   <Select
                     value={routeForm.pathType}
                     onValueChange={(value) =>
-                      setRouteForm((prev) => ({ ...prev, pathType: value as keyof typeof PATH_MATCH_TYPES }))
+                      setRouteForm((prev) => ({
+                        ...prev,
+                        pathType: value as keyof typeof PATH_MATCH_TYPES,
+                      }))
                     }
                   >
                     <SelectTrigger>
@@ -455,9 +459,7 @@ export const AddRouteDialog: React.FC<AddRouteDialogProps> = ({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="path-value">
-                    {PATH_MATCH_TYPES[routeForm.pathType]}
-                  </Label>
+                  <Label htmlFor="path-value">{PATH_MATCH_TYPES[routeForm.pathType]}</Label>
                   <Input
                     id="path-value"
                     value={routeForm.pathPrefix}
@@ -486,9 +488,7 @@ export const AddRouteDialog: React.FC<AddRouteDialogProps> = ({
                   <Input
                     id="methods"
                     value={routeForm.methods}
-                    onChange={(e) =>
-                      setRouteForm((prev) => ({ ...prev, methods: e.target.value }))
-                    }
+                    onChange={(e) => setRouteForm((prev) => ({ ...prev, methods: e.target.value }))}
                     placeholder="GET, POST, PUT"
                   />
                 </div>
@@ -627,7 +627,10 @@ export const EditRouteDialog: React.FC<EditRouteDialogProps> = ({
               <Select
                 value={routeForm.pathType}
                 onValueChange={(value) =>
-                  setRouteForm((prev) => ({ ...prev, pathType: value as keyof typeof PATH_MATCH_TYPES }))
+                  setRouteForm((prev) => ({
+                    ...prev,
+                    pathType: value as keyof typeof PATH_MATCH_TYPES,
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -643,15 +646,11 @@ export const EditRouteDialog: React.FC<EditRouteDialogProps> = ({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-path-value">
-                {PATH_MATCH_TYPES[routeForm.pathType]}
-              </Label>
+              <Label htmlFor="edit-path-value">{PATH_MATCH_TYPES[routeForm.pathType]}</Label>
               <Input
                 id="edit-path-value"
                 value={routeForm.pathPrefix}
-                onChange={(e) =>
-                  setRouteForm((prev) => ({ ...prev, pathPrefix: e.target.value }))
-                }
+                onChange={(e) => setRouteForm((prev) => ({ ...prev, pathPrefix: e.target.value }))}
                 placeholder={routeForm.pathType === "regex" ? "^/api/.*" : "/"}
               />
             </div>
@@ -683,9 +682,7 @@ export const EditRouteDialog: React.FC<EditRouteDialogProps> = ({
               <Input
                 id="edit-query-params"
                 value={routeForm.queryParams}
-                onChange={(e) =>
-                  setRouteForm((prev) => ({ ...prev, queryParams: e.target.value }))
-                }
+                onChange={(e) => setRouteForm((prev) => ({ ...prev, queryParams: e.target.value }))}
                 placeholder="version=v1, type=json"
               />
             </div>
@@ -751,9 +748,7 @@ export const EditTcpRouteDialog: React.FC<EditTcpRouteDialogProps> = ({
               <Input
                 id="edit-tcp-rule-name"
                 value={tcpRouteForm.ruleName}
-                onChange={(e) =>
-                  setTcpRouteForm((prev) => ({ ...prev, ruleName: e.target.value }))
-                }
+                onChange={(e) => setTcpRouteForm((prev) => ({ ...prev, ruleName: e.target.value }))}
                 placeholder="tcp-rule-1"
               />
             </div>
@@ -779,9 +774,7 @@ export const EditTcpRouteDialog: React.FC<EditTcpRouteDialogProps> = ({
             <Input
               id="edit-tcp-hostnames"
               value={tcpRouteForm.hostnames}
-              onChange={(e) =>
-                setTcpRouteForm((prev) => ({ ...prev, hostnames: e.target.value }))
-              }
+              onChange={(e) => setTcpRouteForm((prev) => ({ ...prev, hostnames: e.target.value }))}
               placeholder="example.com, *.example.com"
             />
             <p className="text-xs text-muted-foreground">Leave empty to match all hostnames</p>
@@ -793,8 +786,8 @@ export const EditTcpRouteDialog: React.FC<EditTcpRouteDialogProps> = ({
               <span className="text-sm font-medium">TCP Route Configuration</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              TCP routes are simpler than HTTP routes. They only support hostname-based routing
-              and don&apos;t have path matching, headers, or query parameters.
+              TCP routes are simpler than HTTP routes. They only support hostname-based routing and
+              don&apos;t have path matching, headers, or query parameters.
             </p>
           </div>
         </div>
@@ -811,4 +804,4 @@ export const EditTcpRouteDialog: React.FC<EditTcpRouteDialogProps> = ({
       </DialogContent>
     </Dialog>
   );
-}; 
+};
