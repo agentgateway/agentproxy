@@ -82,11 +82,9 @@ declare -a EXCLUDE_FILES=(
     "README\.md"
     "SECURITY\.md"
     "CONTRIBUTING\.md"
-    "SECURITY_IMPLEMENTATION_SUMMARY\.md"
     "\.githooks/.*"
     "\.vscode-templates/.*"
     "manifests/.*\.example\.json"
-    "scripts/.*"
 )
 
 # Function to check if file should be excluded

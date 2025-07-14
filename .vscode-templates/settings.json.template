@@ -1,0 +1,49 @@
+{
+  "python.defaultInterpreterPath": "${env:PYTHON_INTERPRETER:${workspaceFolder}/.venv/bin/python}",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.venvPath": "${workspaceFolder}",
+  "python.venvFolders": [
+    ".",
+    ".venv",
+    "venv"
+  ],
+  "files.associations": {
+    "*.rs": "rust",
+    "*.toml": "toml"
+  },
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.server.path": "${env:RUST_ANALYZER_PATH}",
+  "files.exclude": {
+    "**/target": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.venv": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.venv": true
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
