@@ -96,4 +96,4 @@ export function getDefaultPolicyData(type: PolicyType) {
     default:
       return {};
   }
-} 
+}

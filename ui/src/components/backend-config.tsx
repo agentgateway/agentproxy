@@ -60,12 +60,12 @@ export function BackendConfig() {
     });
   };
 
-  const handleEditBackend = (backendContext: typeof backends[0]) => {
+  const handleEditBackend = (backendContext: (typeof backends)[0]) => {
     populateFormFromBackendContext(backendContext);
     openEditDialog(backendContext);
   };
 
-  const handleDeleteBackend = async (backendContext: typeof backends[0]) => {
+  const handleDeleteBackend = async (backendContext: (typeof backends)[0]) => {
     await deleteBackend(backendContext, () => {
       loadBackends();
     });
