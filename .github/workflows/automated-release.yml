@@ -1,4 +1,4 @@
-name: Automated Release
+name: WC Automated Release
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  REGISTRY_IMAGE: ghcr.io/agentgateway/agentgateway
+  REGISTRY_IMAGE: ghcr.io/wingedcommerce-llc/agentgateway
 
 jobs:
   # Run all tests first
@@ -232,7 +232,7 @@ jobs:
         
         ### Docker
         \`\`\`bash
-        docker pull ghcr.io/agentgateway/agentgateway:${{ steps.version.outputs.version }}
+        docker pull ghcr.io/wingedcommerce-llc/agentgateway:${{ steps.version.outputs.version }}
         \`\`\`
         
         ### Verification
@@ -243,99 +243,192 @@ jobs:
         - [Examples](https://github.com/agentgateway/agentgateway/tree/main/examples)
         EOF
 
-  # Trigger the existing release workflow
-  trigger-release:
+  # Build binaries and create GitHub release
+  build-and-release:
     needs: [create-release]
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-    - name: Trigger Release Workflow
-      uses: actions/github-script@v7
-      with:
-        script: |
-          await github.rest.actions.createWorkflowDispatch({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'release.yml',
-            ref: 'main',
-            inputs: {
-              version: '${{ needs.create-release.outputs.version }}'
-            }
-          });
-
-  # Update release with notes after binaries are built
-  update-release:
-    needs: [create-release, trigger-release]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            binary_name: agentgateway-linux-amd64
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-musl
+            binary_name: agentgateway-linux-arm64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: agentgateway-darwin-arm64
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
       with:
-        fetch-depth: 0
-
-    - name: Wait for Release Workflow
+        node-version: 23
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build UI
       run: |
-        echo "Waiting for release workflow to complete..."
-        sleep 60  # Give the release workflow time to start
-        
-        # Wait for the release to be created
-        for i in {1..30}; do
-          if gh release view "${{ needs.create-release.outputs.tag }}" >/dev/null 2>&1; then
-            echo "Release found!"
-            break
-          fi
-          echo "Waiting for release... (attempt $i/30)"
-          sleep 30
-        done
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Update Release Notes
+        cd ui
+        npm install
+        npm run build
+    - name: Install musl-tools
+      if: ${{ matrix.os == 'ubuntu-22.04-arm' || matrix.os == 'ubuntu-latest' }}
       run: |
-        # Get commits since last tag
-        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-        if [ -n "$LAST_TAG" ]; then
-          COMMITS=$(git log --oneline $LAST_TAG..HEAD --pretty=format:"- %s (%h)")
-        else
-          COMMITS=$(git log --oneline --pretty=format:"- %s (%h)" -10)
-        fi
-        
-        # Create release notes
-        cat > release_notes.md << EOF
-        # Release ${{ needs.create-release.outputs.version }}
-        
-        This is an automated release created from the main branch.
-        
-        ## Changes
-        $COMMITS
-        
-        ## Installation
-        
-        ### Binary Downloads
-        Download the appropriate binary for your platform from the assets below.
-        
-        ### Docker
-        \`\`\`bash
-        docker pull ghcr.io/agentgateway/agentgateway:${{ needs.create-release.outputs.version }}
-        \`\`\`
-        
-        ### Verification
-        Each binary includes a SHA256 checksum file for verification.
-        
-        ## Documentation
-        - [README](https://github.com/agentgateway/agentgateway/blob/main/README.md)
-        - [Examples](https://github.com/agentgateway/agentgateway/tree/main/examples)
-        EOF
-        
-        # Update the release with proper notes
-        gh release edit "${{ needs.create-release.outputs.tag }}" --notes-file release_notes.md
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+        rustup target add ${{ matrix.target }}
+    - name: Build Binary
+      run: make build
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CARGO_BUILD_ARGS: "--target ${{ matrix.target }}"
+    - name: Prepare Release Assets
+      run: |
+        mkdir -p release-assets
+        cp target/${{ matrix.target }}/release/agentgateway release-assets/${{ matrix.binary_name }}
+        cd release-assets
+        sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ needs.create-release.outputs.tag }}
+        files: release-assets/*
+        body: |
+          # WC Fork Release ${{ needs.create-release.outputs.version }}
+          
+          This is an automated release from the WingedCommerce fork.
+          
+          ## Installation
+          
+          ### Binary Downloads
+          Download the appropriate binary for your platform from the assets below.
+          
+          ### Docker
+          ```bash
+          docker pull ghcr.io/wingedcommerce-llc/agentgateway:${{ needs.create-release.outputs.version }}
+          ```
+          
+          ### Verification
+          Each binary includes a SHA256 checksum file for verification.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # TODO: Uncomment to enable Docker image building and pushing to registry
+  # # Build and push Docker images
+  # build-docker:
+  #   needs: [create-release]
+  #   runs-on: ${{ matrix.os }}
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - platform: linux/amd64
+  #           os: ubuntu-latest
+  #         - platform: linux/arm64
+  #           os: ubuntu-22.04-arm
+  #   steps:
+  #   - name: Prepare
+  #     run: |
+  #       platform=${{ matrix.platform }}
+  #       echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
+  #   - name: Docker meta
+  #     id: meta
+  #     uses: docker/metadata-action@v5
+  #     with:
+  #       images: ${{ env.REGISTRY_IMAGE }}
+  #       tags: |
+  #         type=raw,value=${{ needs.create-release.outputs.version }}
+  #   - name: Login to GitHub Container Registry
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Set up QEMU
+  #     uses: docker/setup-qemu-action@v3
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
+  #   - name: Build and push by digest
+  #     id: build
+  #     uses: docker/build-push-action@v6
+  #     with:
+  #       platforms: ${{ matrix.platform }}
+  #       labels: ${{ steps.meta.outputs.labels }}
+  #       tags: ${{ env.REGISTRY_IMAGE }}:${{ needs.create-release.outputs.version }}
+  #       outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+  #   - name: Export digest
+  #     run: |
+  #       mkdir -p ${{ runner.temp }}/digests
+  #       digest="${{ steps.build.outputs.digest }}"
+  #       touch "${{ runner.temp }}/digests/${digest#sha256:}"
+  #   - name: Upload digest
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: digests-${{ env.PLATFORM_PAIR }}
+  #       path: ${{ runner.temp }}/digests/*
+  #       if-no-files-found: error
+  #       retention-days: 1
+
+  # # Create multi-platform Docker manifest
+  # push-docker:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   needs:
+  #     - create-release
+  #     - build-docker
+  #   steps:
+  #   - name: Download digests
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       path: ${{ runner.temp }}/digests
+  #       pattern: digests-*
+  #       merge-multiple: true
+  #   - name: Login to GitHub Container Registry
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
+  #   - name: Docker meta
+  #     id: meta
+  #     uses: docker/metadata-action@v5
+  #     with:
+  #       images: ${{ env.REGISTRY_IMAGE }}
+  #       tags: |
+  #         type=raw,value=${{ needs.create-release.outputs.version }}
+  #   - name: Create manifest list and push
+  #     working-directory: ${{ runner.temp }}/digests
+  #     run: |
+  #       docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+  #         $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+  #   - name: Inspect image
+  #     run: |
+  #       docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ needs.create-release.outputs.version }}
+
+  # Final announcement
+  announce-release:
+    needs: [create-release, build-and-release]
+    runs-on: ubuntu-latest
+    steps:
     - name: Announce Release
       run: |
-        echo "🎉 Successfully created release ${{ needs.create-release.outputs.tag }}"
-        echo "📦 Binaries and Docker images are available"
+        echo "🎉 Successfully created WC fork release ${{ needs.create-release.outputs.tag }}"
+        echo "📦 Binaries are available for download"
         echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag }}"
