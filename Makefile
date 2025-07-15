@@ -27,8 +27,8 @@ build:
 # lint
 .PHONY: lint
 lint:
-	cargo fmt --check
-	cargo clippy --all-targets -- -D warnings
+	@unset CARGO_BUILD_JOBS && cargo fmt --check
+	@unset CARGO_BUILD_JOBS && cargo clippy --all-targets -- -D warnings
 
 # test
 .PHONY: test

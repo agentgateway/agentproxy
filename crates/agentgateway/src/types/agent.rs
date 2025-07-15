@@ -579,25 +579,30 @@ pub enum OpenAPIVersion {
 }
 
 /// Detect OpenAPI version from the content string
-pub fn detect_openapi_version(content: &str) -> Result<OpenAPIVersion, Box<dyn std::error::Error + Send + Sync>> {
+pub fn detect_openapi_version(
+	content: &str,
+) -> Result<OpenAPIVersion, Box<dyn std::error::Error + Send + Sync>> {
 	// Parse just enough to get the version field
-	let value: serde_json::Value = yamlviajson::from_str(content)
-		.map_err(|e| format!("Failed to parse content: {}", e))?;
-	
+	let value: serde_json::Value =
+		yamlviajson::from_str(content).map_err(|e| format!("Failed to parse content: {}", e))?;
+
 	let version = value
 		.get("openapi")
 		.and_then(|v| v.as_str())
 		.ok_or("Missing 'openapi' field")?;
-	
+
 	if version.starts_with("3.0") {
 		Ok(OpenAPIVersion::V3_0)
 	} else if version.starts_with("3.1") {
 		Ok(OpenAPIVersion::V3_1)
 	} else {
-		Err(format!(
-			"Unsupported OpenAPI version: {}. Only 3.0.x and 3.1.x are supported.",
-			version
-		).into())
+		Err(
+			format!(
+				"Unsupported OpenAPI version: {}. Only 3.0.x and 3.1.x are supported.",
+				version
+			)
+			.into(),
+		)
 	}
 }
 
@@ -637,13 +642,11 @@ where
 	let version = detect_openapi_version(&content).map_err(serde::de::Error::custom)?;
 	let schema = match version {
 		OpenAPIVersion::V3_0 => {
-			let spec: OpenAPIv3 = yamlviajson::from_str(&content)
-				.map_err(serde::de::Error::custom)?;
+			let spec: OpenAPIv3 = yamlviajson::from_str(&content).map_err(serde::de::Error::custom)?;
 			OpenAPI::V3_0(Arc::new(spec))
 		},
 		OpenAPIVersion::V3_1 => {
-			let spec: OpenAPIv3_1 = yamlviajson::from_str(&content)
-				.map_err(serde::de::Error::custom)?;
+			let spec: OpenAPIv3_1 = yamlviajson::from_str(&content).map_err(serde::de::Error::custom)?;
 			OpenAPI::V3_1(Arc::new(spec))
 		},
 	};

@@ -3,12 +3,15 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::sync::Arc;
 
+use crate::types::agent::OpenAPI;
 use http::Method;
 use http::header::{ACCEPT, CONTENT_TYPE};
 use http_body_util::BodyExt;
 use hyper_util::rt::TokioIo;
-use openapiv3::{OpenAPI as OpenAPIv3, Parameter as Parameterv3, ReferenceOr as ReferenceOrv3, RequestBody as RequestBodyv3, Schema as Schemav3, SchemaKind as SchemaKindv3, Type as Typev3};
-use crate::types::agent::OpenAPI;
+use openapiv3::{
+	OpenAPI as OpenAPIv3, Parameter as Parameterv3, ReferenceOr as ReferenceOrv3,
+	RequestBody as RequestBodyv3, Schema as Schemav3, SchemaKind as SchemaKindv3, Type as Typev3,
+};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use rmcp::model::{JsonObject, Tool};
 use serde::{Deserialize, Serialize};
@@ -20,13 +23,15 @@ use crate::client;
 use crate::store::BackendPolicies;
 use crate::types::agent::Target;
 
-mod compatibility;
 mod adapters;
+mod compatibility;
 mod specification;
 mod v3_0;
 mod v3_1;
 
-use compatibility::{CompatibleSchema, CompatibleParameter, CompatibleRequestBody, ParameterLocation, ToCompatible};
+use compatibility::{
+	CompatibleParameter, CompatibleRequestBody, CompatibleSchema, ParameterLocation, ToCompatible,
+};
 use specification::{OpenAPISpecification, OpenAPISpecificationFactory};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -78,15 +83,13 @@ pub enum ParseError {
 
 pub(crate) fn get_server_prefix(server: &OpenAPI) -> Result<String, ParseError> {
 	match server {
-		OpenAPI::V3_0(spec) => {
-			match spec.servers.len() {
-				0 => Ok("/".to_string()),
-				1 => Ok(spec.servers[0].url.clone()),
-				_ => Err(ParseError::UnsupportedReference(format!(
-					"multiple servers are not supported: {:?}",
-					spec.servers
-				))),
-			}
+		OpenAPI::V3_0(spec) => match spec.servers.len() {
+			0 => Ok("/".to_string()),
+			1 => Ok(spec.servers[0].url.clone()),
+			_ => Err(ParseError::UnsupportedReference(format!(
+				"multiple servers are not supported: {:?}",
+				spec.servers
+			))),
 		},
 		OpenAPI::V3_1(spec) => {
 			let empty_vec = Vec::new();
@@ -102,7 +105,6 @@ pub(crate) fn get_server_prefix(server: &OpenAPI) -> Result<String, ParseError> 
 		},
 	}
 }
-
 
 /// Main entry point for parsing OpenAPI schemas.
 /// Uses the specification pattern to inject the appropriate behavior based on the OpenAPI version.
@@ -276,7 +278,8 @@ fn parse_openapi_v3_1_schema(
 		"OpenAPI 3.1 parsing is not yet fully implemented. \
 		The specification pattern has been set up to support 3.1, but the parsing logic \
 		needs to be completed based on the openapiv3_1 crate API structure. \
-		Please use OpenAPI 3.0 specifications for now, or help implement the 3.1 parsing logic.".to_string()
+		Please use OpenAPI 3.0 specifications for now, or help implement the 3.1 parsing logic."
+			.to_string(),
 	))
 }
 
