@@ -80,6 +80,7 @@ declare -a EXCLUDE_FILES=(
     "\.gitignore"
     "\.env\.example"
     "README\.md"
+    "DEVELOPMENT\.md"
     "SECURITY\.md"
     "CONTRIBUTING\.md"
     "\.githooks/.*"
