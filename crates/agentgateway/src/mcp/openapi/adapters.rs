@@ -333,7 +333,7 @@ mod tests {
 	fn test_compatible_schema_default() {
 		let schema = CompatibleSchema::default();
 		assert_eq!(schema.schema_type, None);
-		assert_eq!(schema.nullable, false);
+		assert!(!schema.nullable);
 		assert!(schema.properties.is_empty());
 		assert_eq!(schema.items, None);
 		assert!(schema.required.is_empty());

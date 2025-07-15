@@ -64,7 +64,7 @@ paths:
 				assert_eq!(tool.name, "testOperation");
 				println!("✓ Tool name: {}", tool.name);
 				if let Some(desc) = &tool.description {
-                    println!("✓ Tool description: {desc}");
+					println!("✓ Tool description: {desc}");
 				}
 			},
 			Err(e) => {
@@ -127,8 +127,7 @@ paths:
 				// Should not be the "not implemented" error
 				assert!(!error_msg.contains("OpenAPI 3.1 parsing is not yet fully implemented"));
 				println!(
-					"✓ OpenAPI 3.0 parsing failed with expected error (not 'not implemented'): {}",
-					error_msg
+					"✓ OpenAPI 3.0 parsing failed with expected error (not 'not implemented'): {error_msg}"
 				);
 			},
 		}
@@ -187,7 +186,7 @@ paths:
 		println!("Has components: {}", spec.components.is_some());
 
 		// This test is just for exploration - it should always pass
-		assert!(true);
+		// No assertion needed since we're just exploring the API structure
 	}
 
 	#[test]
@@ -275,7 +274,7 @@ paths:
 						);
 
 						// We expect to have processed 3 parameters from our test spec
-						if props_obj.len() > 0 {
+						if !props_obj.is_empty() {
 							println!("✓ Parameter processing is working!");
 						} else {
 							println!("⚠ No parameters processed yet (expected for current implementation)");
@@ -284,11 +283,11 @@ paths:
 				}
 
 				if let Some(desc) = &tool.description {
-					println!("✓ Tool description: {}", desc);
+					println!("✓ Tool description: {desc}");
 				}
 			},
 			Err(e) => {
-				panic!("✗ OpenAPI 3.1 parameter parsing failed: {}", e);
+				panic!("✗ OpenAPI 3.1 parameter parsing failed: {e}");
 			},
 		}
 	}

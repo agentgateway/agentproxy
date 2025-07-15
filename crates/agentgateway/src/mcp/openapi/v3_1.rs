@@ -14,7 +14,8 @@ use super::specification::{CommonBehavior, OpenAPISpecification, SchemaBuilder, 
 use super::{BODY_NAME, ParameterType, ParseError, UpstreamOpenAPICall};
 
 /// Type alias for complex return type to reduce complexity
-type SchemaProcessResult = Result<Option<(serde_json::Map<String, Value>, Vec<String>)>, ParseError>;
+type SchemaProcessResult =
+	Result<Option<(serde_json::Map<String, Value>, Vec<String>)>, ParseError>;
 
 /// OpenAPI 3.1 specification behavior
 pub struct OpenAPI31Specification {
@@ -38,7 +39,7 @@ impl OpenAPI31Specification {
 			.summary
 			.as_ref()
 			.or(operation.description.as_ref())
-            .unwrap_or(&format!("{method} {path}"))
+			.unwrap_or(&format!("{method} {path}"))
 			.clone();
 
 		// Process parameters to create input schema
@@ -173,8 +174,7 @@ impl OpenAPI31Specification {
 		request_body: &openapiv3_1::request_body::RequestBody,
 	) -> SchemaProcessResult {
 		// Convert the request body to JSON to examine its structure
-		let request_body_json =
-			serde_json::to_value(request_body).map_err(ParseError::SerdeError)?;
+		let request_body_json = serde_json::to_value(request_body).map_err(ParseError::SerdeError)?;
 
 		// Try to extract content
 		if let Some(content) = request_body_json.get("content") {
@@ -189,9 +189,7 @@ impl OpenAPI31Specification {
 			if let Some(content_obj) = content.as_object() {
 				for (content_type, content_data) in content_obj {
 					if let Some(schema) = content_data.get("schema") {
-						println!(
-							"Processing request body with content type: {content_type}"
-						);
+						println!("Processing request body with content type: {content_type}");
 						return self.process_schema_v3_1(schema);
 					}
 				}
@@ -345,10 +343,7 @@ impl OpenAPI31Specification {
 	}
 
 	/// Process an OpenAPI 3.1 schema and convert it to properties and required fields
-	fn process_schema_v3_1(
-		&self,
-		schema: &Value,
-	) -> SchemaProcessResult {
+	fn process_schema_v3_1(&self, schema: &Value) -> SchemaProcessResult {
 		let mut properties = serde_json::Map::new();
 		let mut required = Vec::new();
 

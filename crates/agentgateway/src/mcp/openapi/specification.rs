@@ -90,9 +90,9 @@ impl CommonBehavior {
 			"cookie" => Err(ParseError::UnsupportedReference(
 				"parameter type COOKIE is not supported".to_string(),
 			)),
-            _ => Err(ParseError::UnsupportedReference(format!(
-                "unsupported parameter location: {location}"
-            ))),
+			_ => Err(ParseError::UnsupportedReference(format!(
+				"unsupported parameter location: {location}"
+			))),
 		}
 	}
 }

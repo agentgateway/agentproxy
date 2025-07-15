@@ -168,14 +168,11 @@ impl OpenAPISpecification for OpenAPI30Specification {
 									let schema_value = serde_json::to_value(&compatible_param.schema)
 										.map_err(ParseError::SerdeError)?;
 
-									param_schemas
-										.entry(param_type)
-                                        .or_default()
-										.push((
-											compatible_param.name,
-											schema_value,
-											compatible_param.required,
-										));
+									param_schemas.entry(param_type).or_default().push((
+										compatible_param.name,
+										schema_value,
+										compatible_param.required,
+									));
 								}
 
 								// Build parameter schemas
