@@ -33,6 +33,15 @@ lint:
 # test
 .PHONY: test
 test:
+	@unset CARGO_BUILD_JOBS && \
+	export NAMESPACE=test_namespace && \
+	export GATEWAY=test_gateway && \
+	export WORKER_THREADS=4 && \
+	export CPU_LIMIT=4 && \
+	export INSTANCE_IP=127.0.0.1 && \
+	export POD_NAME=test-pod && \
+	export POD_NAMESPACE=test_namespace && \
+	export NODE_NAME=test-node && \
 	cargo test --all-targets
 
 # clean
