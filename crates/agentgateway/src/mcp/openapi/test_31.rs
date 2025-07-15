@@ -64,11 +64,11 @@ paths:
 				assert_eq!(tool.name, "testOperation");
 				println!("✓ Tool name: {}", tool.name);
 				if let Some(desc) = &tool.description {
-					println!("✓ Tool description: {}", desc);
+                    println!("✓ Tool description: {desc}");
 				}
 			},
 			Err(e) => {
-				panic!("✗ OpenAPI 3.1 parsing failed: {}", e);
+				panic!("✗ OpenAPI 3.1 parsing failed: {e}");
 			},
 		}
 	}

@@ -584,7 +584,7 @@ pub fn detect_openapi_version(
 ) -> Result<OpenAPIVersion, Box<dyn std::error::Error + Send + Sync>> {
 	// Parse just enough to get the version field
 	let value: serde_json::Value =
-		yamlviajson::from_str(content).map_err(|e| format!("Failed to parse content: {}", e))?;
+        yamlviajson::from_str(content).map_err(|e| format!("Failed to parse content: {e}"))?;
 
 	let version = value
 		.get("openapi")
@@ -598,8 +598,7 @@ pub fn detect_openapi_version(
 	} else {
 		Err(
 			format!(
-				"Unsupported OpenAPI version: {}. Only 3.0.x and 3.1.x are supported.",
-				version
+				"Unsupported OpenAPI version: {version}. Only 3.0.x and 3.1.x are supported."
 			)
 			.into(),
 		)

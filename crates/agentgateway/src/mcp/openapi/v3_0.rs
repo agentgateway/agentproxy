@@ -170,7 +170,7 @@ impl OpenAPISpecification for OpenAPI30Specification {
 
 									param_schemas
 										.entry(param_type)
-										.or_insert_with(Vec::new)
+                                        .or_default()
 										.push((
 											compatible_param.name,
 											schema_value,

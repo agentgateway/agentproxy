@@ -13,6 +13,9 @@ use super::compatibility::{
 use super::specification::{CommonBehavior, OpenAPISpecification, SchemaBuilder, SchemaResolver};
 use super::{BODY_NAME, ParameterType, ParseError, UpstreamOpenAPICall};
 
+/// Type alias for complex return type to reduce complexity
+type SchemaProcessResult = Result<Option<(serde_json::Map<String, Value>, Vec<String>)>, ParseError>;
+
 /// OpenAPI 3.1 specification behavior
 pub struct OpenAPI31Specification {
 	spec: Arc<OpenAPIv3_1>,
@@ -35,7 +38,7 @@ impl OpenAPI31Specification {
 			.summary
 			.as_ref()
 			.or(operation.description.as_ref())
-			.unwrap_or(&format!("{} {}", method, path))
+            .unwrap_or(&format!("{method} {path}"))
 			.clone();
 
 		// Process parameters to create input schema
@@ -110,7 +113,7 @@ impl OpenAPI31Specification {
 		// We'll use serde serialization to understand the structure
 
 		// Convert the parameter to JSON to examine its structure
-		let param_json = serde_json::to_value(parameter).map_err(|e| ParseError::SerdeError(e))?;
+		let param_json = serde_json::to_value(parameter).map_err(ParseError::SerdeError)?;
 
 		// Try to extract common fields
 		let name = param_json
@@ -168,10 +171,10 @@ impl OpenAPI31Specification {
 	pub fn process_request_body_v3_1(
 		&self,
 		request_body: &openapiv3_1::request_body::RequestBody,
-	) -> Result<Option<(serde_json::Map<String, Value>, Vec<String>)>, ParseError> {
+	) -> SchemaProcessResult {
 		// Convert the request body to JSON to examine its structure
 		let request_body_json =
-			serde_json::to_value(request_body).map_err(|e| ParseError::SerdeError(e))?;
+			serde_json::to_value(request_body).map_err(ParseError::SerdeError)?;
 
 		// Try to extract content
 		if let Some(content) = request_body_json.get("content") {
@@ -187,8 +190,7 @@ impl OpenAPI31Specification {
 				for (content_type, content_data) in content_obj {
 					if let Some(schema) = content_data.get("schema") {
 						println!(
-							"Processing request body with content type: {}",
-							content_type
+							"Processing request body with content type: {content_type}"
 						);
 						return self.process_schema_v3_1(schema);
 					}
@@ -230,8 +232,7 @@ impl OpenAPI31Specification {
 					}
 
 					println!(
-						"✓ Converted type array {:?} to type: '{}', nullable: {}",
-						type_array, main_type_str, is_nullable
+						"✓ Converted type array {type_array:?} to type: '{main_type_str}', nullable: {is_nullable}"
 					);
 				} else if is_nullable {
 					// Only null type found
@@ -333,8 +334,7 @@ impl OpenAPI31Specification {
 			}
 
 			println!(
-				"✓ Normalized {} composition with {} schemas",
-				composition_type,
+				"✓ Normalized {composition_type} composition with {} schemas",
 				normalized_schemas.len()
 			);
 			Ok(json!(normalized_schemas))
@@ -348,7 +348,7 @@ impl OpenAPI31Specification {
 	fn process_schema_v3_1(
 		&self,
 		schema: &Value,
-	) -> Result<Option<(serde_json::Map<String, Value>, Vec<String>)>, ParseError> {
+	) -> SchemaProcessResult {
 		let mut properties = serde_json::Map::new();
 		let mut required = Vec::new();
 
