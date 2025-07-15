@@ -396,14 +396,14 @@ paths:
 						call.path
 					);
 					if let Some(desc) = &tool.description {
-						println!("    Description: {}", desc);
+						println!("    Description: {desc}");
 					}
 				}
 
 				println!("✓ All expected tools generated successfully");
 			},
 			Err(e) => {
-				panic!("✗ OpenAPI 3.1 Petstore parsing failed: {}", e);
+				panic!("✗ OpenAPI 3.1 Petstore parsing failed: {e}");
 			},
 		}
 	}
@@ -497,7 +497,7 @@ paths:
 
 						// For now, we expect basic schema structure
 						// Later we'll enhance this to include request body fields
-						if props_obj.len() > 0 {
+						if !props_obj.is_empty() {
 							println!("✓ Schema processing is working!");
 						} else {
 							println!(
@@ -508,11 +508,11 @@ paths:
 				}
 
 				if let Some(desc) = &tool.description {
-					println!("✓ Tool description: {}", desc);
+					println!("✓ Tool description: {desc}");
 				}
 			},
 			Err(e) => {
-				panic!("✗ OpenAPI 3.1 request body parsing failed: {}", e);
+				panic!("✗ OpenAPI 3.1 request body parsing failed: {e}");
 			},
 		}
 	}
@@ -703,8 +703,7 @@ paths:
 		let minimum_val = &anyof_array[1]["minimum"];
 		assert!(
 			minimum_val == &json!(0) || minimum_val == &json!(0.0),
-			"Expected minimum to be 0 or 0.0, got: {:?}",
-			minimum_val
+			"Expected minimum to be 0 or 0.0, got: {minimum_val:?}"
 		);
 
 		// Test anyOf with type arrays
@@ -870,7 +869,7 @@ paths:
 
 		let (name, schema, required) = result.unwrap();
 		assert_eq!(name, "status");
-		assert_eq!(required, false);
+		assert!(!required);
 		assert_eq!(schema["type"], "string");
 		assert_eq!(schema["nullable"], true);
 		assert_eq!(schema["enum"], json!(["active", "inactive", "pending"]));
@@ -904,7 +903,7 @@ paths:
 
 		let (name, schema, required) = result.unwrap();
 		assert_eq!(name, "filter");
-		assert_eq!(required, true);
+		assert!(required);
 		assert!(schema["anyOf"].is_array());
 
 		let anyof_array = schema["anyOf"].as_array().unwrap();
@@ -916,8 +915,7 @@ paths:
 		let minimum_val = &anyof_array[1]["minimum"];
 		assert!(
 			minimum_val == &json!(0) || minimum_val == &json!(0.0),
-			"Expected minimum to be 0 or 0.0, got: {:?}",
-			minimum_val
+			"Expected minimum to be 0 or 0.0, got: {minimum_val:?}"
 		);
 
 		println!("✓ Complex parameter processing test passed!");
