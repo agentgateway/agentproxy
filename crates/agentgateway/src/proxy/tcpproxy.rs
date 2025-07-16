@@ -2,14 +2,15 @@ use crate::client::Transport;
 use crate::http::Request;
 use crate::proxy::ProxyError;
 use crate::telemetry::log::RequestLog;
+use crate::telemetry::metrics::TCPLabels;
 use crate::transport::stream;
 use crate::transport::stream::{Socket, TCPConnectionInfo, TLSConnectionInfo};
 use crate::types::agent;
 use crate::types::agent::{
-	Backend, BackendReference, BindName, HeaderMatch, HeaderValueMatch, Listener, ListenerProtocol,
-	PathMatch, PolicyTarget, QueryValueMatch, Route, RouteBackend, RouteBackendReference,
-	SimpleBackend, SimpleBackendReference, TCPRoute, TCPRouteBackend, TCPRouteBackendReference,
-	Target,
+	Backend, BackendReference, BindName, BindProtocol, HeaderMatch, HeaderValueMatch, Listener,
+	ListenerProtocol, PathMatch, PolicyTarget, QueryValueMatch, Route, RouteBackend,
+	RouteBackendReference, SimpleBackend, SimpleBackendReference, TCPRoute, TCPRouteBackend,
+	TCPRouteBackendReference, Target,
 };
 use crate::types::discovery::NetworkAddress;
 use crate::types::discovery::gatewayaddress::Destination;
@@ -48,17 +49,32 @@ impl TCPProxy {
 		log.start = Some(start);
 		log.tcp_info = connection.ext::<TCPConnectionInfo>().cloned();
 		log.tls_info = connection.ext::<TLSConnectionInfo>().cloned();
+		self
+			.inputs
+			.metrics
+			.downstream_connection
+			.get_or_create(&TCPLabels {
+				bind: Some(&self.bind_name).into(),
+				gateway: Some(&self.selected_listener.gateway_name).into(),
+				listener: Some(&self.selected_listener.name).into(),
+				protocol: if log.tls_info.is_some() {
+					BindProtocol::tls
+				} else {
+					BindProtocol::tcp
+				},
+			})
+			.inc();
 		let sni = log
 			.tls_info
 			.as_ref()
 			.and_then(|tls| tls.server_name.as_deref());
-		// log.metrics = Some(self.inputs.metrics.clone());
 
 		let selected_listener = self.selected_listener.clone();
 		let upstream = self.inputs.upstream.clone();
 		let inputs = self.inputs.clone();
 		let bind_name = self.bind_name.clone();
 		debug!(bind=%bind_name, "route for bind");
+		log.bind_name = Some(bind_name.clone());
 		log.gateway_name = Some(selected_listener.gateway_name.clone());
 		log.listener_name = Some(selected_listener.name.clone());
 		debug!(bind=%bind_name, listener=%selected_listener.key, "selected listener");

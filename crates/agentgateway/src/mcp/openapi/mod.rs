@@ -503,7 +503,7 @@ impl Default for JsonSchema {
 pub struct Handler {
 	pub host: String,
 	pub prefix: String,
-	pub port: u32,
+	pub port: u16,
 	pub client: client::Client,
 	pub tools: Vec<(Tool, UpstreamOpenAPICall)>,
 	pub policies: BackendPolicies,
@@ -669,7 +669,7 @@ impl Handler {
 			.map_err(|e| anyhow::anyhow!("Failed to build request: {}", e))?;
 
 		// Make the request
-		let target = Target::try_from((self.host.as_str(), self.port as u16))?;
+		let target = Target::try_from((self.host.as_str(), self.port))?;
 		let response = self
 			.client
 			.call(client::Call {

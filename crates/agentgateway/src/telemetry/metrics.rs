@@ -1,11 +1,17 @@
+use crate::types::agent::BindProtocol;
 use agent_core::metrics::{DefaultedUnknown, EncodeDisplay};
 use agent_core::strng::RichStrng;
+use agent_core::version;
 use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::info::Info;
+use prometheus_client::registry;
 use prometheus_client::registry::Registry;
+use std::fmt::Debug;
 
 #[derive(Clone, Hash, Default, Debug, PartialEq, Eq, EncodeLabelSet)]
-pub struct CommonTrafficLabels {
+pub struct HTTPLabels {
+	pub bind: DefaultedUnknown<RichStrng>,
 	pub gateway: DefaultedUnknown<RichStrng>,
 	pub listener: DefaultedUnknown<RichStrng>,
 	pub route: DefaultedUnknown<RichStrng>,
@@ -16,22 +22,58 @@ pub struct CommonTrafficLabels {
 	pub status: DefaultedUnknown<EncodeDisplay<u16>>,
 }
 
-type Counter = Family<CommonTrafficLabels, prometheus_client::metrics::counter::Counter>;
+#[derive(Clone, Hash, Debug, PartialEq, Eq, EncodeLabelSet)]
+pub struct TCPLabels {
+	pub bind: DefaultedUnknown<RichStrng>,
+	pub gateway: DefaultedUnknown<RichStrng>,
+	pub listener: DefaultedUnknown<RichStrng>,
+	pub protocol: BindProtocol,
+}
+
+type Counter = Family<HTTPLabels, prometheus_client::metrics::counter::Counter>;
+type TCPCounter = Family<TCPLabels, prometheus_client::metrics::counter::Counter>;
+
+#[derive(Clone, Hash, Debug, PartialEq, Eq, EncodeLabelSet)]
+pub struct BuildLabel {
+	tag: String,
+}
 
 #[derive(Debug)]
 pub struct Metrics {
 	pub requests: Counter,
+	pub downstream_connection: TCPCounter,
 }
 
 impl Metrics {
 	pub fn new(registry: &mut Registry) -> Self {
-		let mut build = |name: &str, help: &str| {
-			let m = Family::default();
-			registry.register(name, help, m.clone());
-			m
-		};
+		registry.register(
+			"build",
+			"Agentgateway build information",
+			Info::new(BuildLabel {
+				tag: version::BuildInfo::new().git_tag,
+			}),
+		);
 		Metrics {
-			requests: build("requests", "The total number of HTTP requests sent"),
+			requests: build(
+				registry,
+				"requests",
+				"The total number of HTTP requests sent",
+			),
+			downstream_connection: build(
+				registry,
+				"downstream_connections",
+				"The total number of downstream connections established",
+			),
 		}
 	}
+}
+
+fn build<T: Clone + std::hash::Hash + Eq + Send + Sync + Debug + EncodeLabelSet + 'static>(
+	registry: &mut Registry,
+	name: &str,
+	help: &str,
+) -> Family<T, prometheus_client::metrics::counter::Counter> {
+	let m = Family::<T, _>::default();
+	registry.register(name, help, m.clone());
+	m
 }

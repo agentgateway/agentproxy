@@ -1,15 +1,5 @@
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use std::fmt::Display;
-use std::io::Cursor;
-use std::marker::PhantomData;
-use std::net::{IpAddr, SocketAddr};
-use std::num::NonZeroU16;
-use std::sync::Arc;
-use std::{cmp, net};
-
 use anyhow::anyhow;
+use duration_str::DError::ParseError;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -18,10 +8,20 @@ use regex::Regex;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pemfile::Item;
-
 use secrecy::SecretString;
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::fmt::Display;
+use std::io::Cursor;
+use std::marker::PhantomData;
+use std::net::{IpAddr, SocketAddr};
+use std::num::NonZeroU16;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::{cmp, net};
 use thiserror::Error;
 
 use super::agent::*;
@@ -31,9 +31,11 @@ use crate::http::localratelimit::RateLimit;
 use crate::http::{HeaderName, HeaderValue, StatusCode, filters, retry, status, timeout, uri};
 use crate::mcp::rbac::RuleSet;
 use crate::transport::tls;
+use crate::types::agent::Backend::Opaque;
 use crate::types::discovery::NamespacedHostname;
 use crate::types::proto;
 use crate::types::proto::ProtoError;
+use crate::types::proto::agent::mcp_target::{Kind, Protocol};
 use crate::*;
 
 impl TryFrom<&proto::agent::TlsConfig> for TLSConfig {
@@ -61,6 +63,9 @@ impl TryFrom<&proto::agent::RouteBackend> for RouteBackendReference {
 	fn try_from(s: &proto::agent::RouteBackend) -> Result<Self, Self::Error> {
 		let kind = match &s.kind {
 			None => BackendReference::Invalid,
+			Some(proto::agent::route_backend::Kind::Backend(backend_key)) => {
+				BackendReference::Backend(backend_key.into())
+			},
 			Some(proto::agent::route_backend::Kind::Service(svc_key)) => {
 				let ns = match svc_key.split_once('/') {
 					Some((namespace, hostname)) => Ok(NamespacedHostname {
@@ -203,6 +208,78 @@ impl TryFrom<&proto::agent::Route> for (Route, ListenerKey) {
 			policies: s.traffic_policy.map(TrafficPolicy::try_from).transpose()?,
 		};
 		Ok((r, strng::new(&s.listener_key)))
+	}
+}
+
+impl TryFrom<&proto::agent::Backend> for Backend {
+	type Error = ProtoError;
+
+	fn try_from(s: &proto::agent::Backend) -> Result<Self, Self::Error> {
+		let name = BackendName::from(&s.name);
+		Ok(match &s.kind {
+			Some(proto::agent::backend::Kind::Static(s)) => Backend::Opaque(
+				name,
+				Target::try_from((s.host.as_str(), s.port as u16))
+					.map_err(|e| ProtoError::Generic(e.to_string()))?,
+			),
+			Some(proto::agent::backend::Kind::Ai(a)) => {
+				return Err(ProtoError::Generic(
+					"AI backend is not currently supported".to_string(),
+				));
+			},
+			Some(proto::agent::backend::Kind::Mcp(m)) => Backend::MCP(
+				name,
+				McpBackend {
+					targets: m
+						.targets
+						.iter()
+						.map(|t| McpTarget::try_from(t).map(Arc::new))
+						.collect::<Result<Vec<_>, _>>()?,
+				},
+			),
+			_ => {
+				return Err(ProtoError::Generic("unknown backend".to_string()));
+			},
+		})
+	}
+}
+
+impl TryFrom<&proto::agent::McpTarget> for McpTarget {
+	type Error = ProtoError;
+
+	fn try_from(s: &proto::agent::McpTarget) -> Result<Self, Self::Error> {
+		let proto = proto::agent::mcp_target::Protocol::try_from(s.protocol)?;
+		let host = match &s.kind {
+			Some(proto::agent::mcp_target::Kind::Backend(name)) => {
+				return Err(ProtoError::Generic(
+					"Backend is not currently supported".to_string(),
+				));
+			},
+			Some(proto::agent::mcp_target::Kind::Service(name)) => {
+				let n = NamespacedHostname::from_str(name)?;
+				n.hostname
+			},
+			_ => {
+				return Err(ProtoError::Generic("Unknown backend type".to_string()));
+			},
+		};
+		Ok(Self {
+			name: strng::new(&s.name),
+			spec: match proto {
+				Protocol::Sse => McpTargetSpec::Sse(SseTargetSpec {
+					host: host.to_string(),
+					port: s.port as u16,
+					path: "/sse".to_string(),
+				}),
+				Protocol::Undefined | Protocol::StreamableHttp => {
+					McpTargetSpec::Mcp(StreamableHTTPTargetSpec {
+						host: host.to_string(),
+						port: s.port as u16,
+						path: "/mcp".to_string(),
+					})
+				},
+			},
+		})
 	}
 }
 

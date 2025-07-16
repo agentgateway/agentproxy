@@ -108,7 +108,6 @@ impl Filter {
 
 // UpstreamTarget defines a source for MCP information.
 pub(crate) struct UpstreamTarget {
-	pub(crate) filters: Vec<Filter>,
 	pub(crate) spec: UpstreamTargetSpec,
 }
 pub(crate) enum UpstreamTargetSpec {
@@ -134,26 +133,7 @@ impl UpstreamTarget {
 					}))
 					.await?;
 				match result {
-					ServerResult::ListToolsResult(result) => Ok({
-						let relevant_filters = self
-							.filters
-							.iter()
-							.filter(|filter| filter.resource_type == "tool")
-							.collect::<Vec<_>>();
-						ListToolsResult {
-							next_cursor: result.next_cursor,
-							tools: result
-								.tools
-								.into_iter()
-								.filter(|tool| {
-									relevant_filters.is_empty()
-										|| relevant_filters
-											.iter()
-											.any(|filter| filter.matches(&tool.name))
-								})
-								.collect::<Vec<_>>(),
-						}
-					}),
+					ServerResult::ListToolsResult(result) => Ok(result),
 					_ => Err(UpstreamError::ServiceError(
 						rmcp::ServiceError::UnexpectedResponse,
 					)),
@@ -214,24 +194,9 @@ impl UpstreamTarget {
 					.await?;
 				match result {
 					ServerResult::ListPromptsResult(result) => Ok({
-						// TODO: filter prompts
-						let relevant_filters = self
-							.filters
-							.iter()
-							.filter(|filter| filter.resource_type == "prompt")
-							.collect::<Vec<_>>();
 						ListPromptsResult {
 							next_cursor: result.next_cursor,
-							prompts: result
-								.prompts
-								.into_iter()
-								.filter(|prompt| {
-									relevant_filters.is_empty()
-										|| relevant_filters
-											.iter()
-											.any(|filter| filter.matches(&prompt.name))
-								})
-								.collect::<Vec<_>>(),
+							prompts: result.prompts,
 						}
 					}),
 					_ => Err(UpstreamError::ServiceError(
@@ -264,24 +229,9 @@ impl UpstreamTarget {
 					.await?;
 				match result {
 					ServerResult::ListResourcesResult(result) => Ok({
-						// TODO: filter resources
-						let relevant_filters = self
-							.filters
-							.iter()
-							.filter(|filter| filter.resource_type == "resource")
-							.collect::<Vec<_>>();
 						ListResourcesResult {
 							next_cursor: result.next_cursor,
-							resources: result
-								.resources
-								.into_iter()
-								.filter(|resource| {
-									relevant_filters.is_empty()
-										|| relevant_filters
-											.iter()
-											.any(|filter| filter.matches(&resource.name))
-								})
-								.collect::<Vec<_>>(),
+							resources: result.resources,
 						}
 					}),
 					_ => Err(UpstreamError::ServiceError(

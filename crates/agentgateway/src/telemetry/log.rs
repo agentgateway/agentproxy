@@ -9,11 +9,11 @@ use crossbeam::atomic::AtomicCell;
 use http_body::{Body, Frame, SizeHint};
 use tracing::event;
 
-use crate::telemetry::metrics::{CommonTrafficLabels, Metrics};
+use crate::telemetry::metrics::{HTTPLabels, Metrics};
 use crate::telemetry::trc;
 use crate::transport::stream::{TCPConnectionInfo, TLSConnectionInfo};
 use crate::types::agent::{
-	BackendName, GatewayName, ListenerName, RouteName, RouteRuleName, Target,
+	BackendName, BindName, GatewayName, ListenerName, RouteName, RouteRuleName, Target,
 };
 use crate::types::discovery::NamespacedHostname;
 use crate::{cel, llm, mcp};
@@ -83,6 +83,7 @@ pub struct RequestLog {
 
 	pub endpoint: Option<Target>,
 
+	pub bind_name: Option<BindName>,
 	pub gateway_name: Option<GatewayName>,
 	pub listener_name: Option<ListenerName>,
 	pub route_rule_name: Option<RouteRuleName>,
@@ -130,7 +131,8 @@ impl Drop for RequestLog {
 		};
 		if let Some(m) = &self.metrics {
 			m.requests
-				.get_or_create(&CommonTrafficLabels {
+				.get_or_create(&HTTPLabels {
+					bind: (&self.bind_name).into(),
 					gateway: (&self.gateway_name).into(),
 					listener: (&self.listener_name).into(),
 					route: (&self.route_name).into(),

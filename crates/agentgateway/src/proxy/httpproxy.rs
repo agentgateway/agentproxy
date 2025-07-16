@@ -54,6 +54,7 @@ use crate::llm::{LLMRequest, LLMResponse, RequestResult};
 use crate::proxy::ProxyError;
 use crate::store::{BackendPolicies, Event, LLMRoutePolicies};
 use crate::telemetry::log::{AsyncLog, LogBody, RequestLog};
+use crate::telemetry::metrics::TCPLabels;
 use crate::telemetry::trc::TraceParent;
 use crate::transport::stream::{Extension, Socket, TCPConnectionInfo, TLSConnectionInfo};
 use crate::types::agent;
@@ -282,6 +283,22 @@ impl HTTPProxy {
 		let inputs = self.inputs.clone();
 		let bind_name = self.bind_name.clone();
 		debug!(bind=%bind_name, "route for bind");
+		self
+			.inputs
+			.metrics
+			.downstream_connection
+			.get_or_create(&TCPLabels {
+				bind: Some(&self.bind_name).into(),
+				// For HTTP, this will be empty
+				gateway: selected_listener.as_ref().map(|l| &l.gateway_name).into(),
+				listener: selected_listener.as_ref().map(|l| &l.name).into(),
+				protocol: if log.tls_info.is_some() {
+					BindProtocol::https
+				} else {
+					BindProtocol::http
+				},
+			})
+			.inc();
 		let Some(listeners) = ({
 			let state = inputs.stores.read_binds();
 			state.listeners(bind_name.clone())

@@ -148,7 +148,6 @@ impl ConnectionPool {
 				.context("start sse client")?;
 
 				upstream::UpstreamTarget {
-					filters: target.filters.clone(),
 					spec: upstream::UpstreamTargetSpec::Mcp(
 						serve_client_with_ct(
 							PeerClientHandler {
@@ -183,15 +182,8 @@ impl ConnectionPool {
 						..Default::default()
 					},
 				);
-				// transport.send(ClientJsonRpcMessage::response(
-				// 	ClientResult::InitializeResult(model::InitializeResult {
-				//
-				// 	}),
-				// 	RequestId::Number(1),
-				// )).await.unwrap()
 
 				upstream::UpstreamTarget {
-					filters: target.filters.clone(),
 					spec: upstream::UpstreamTargetSpec::Mcp(
 						serve_client_with_ct(
 							PeerClientHandler {
@@ -211,7 +203,6 @@ impl ConnectionPool {
 				let mut c = Command::new(cmd);
 				c.args(args);
 				upstream::UpstreamTarget {
-					filters: target.filters.clone(),
 					spec: upstream::UpstreamTargetSpec::Mcp(
 						serve_client_with_ct(
 							PeerClientHandler {
@@ -247,7 +238,6 @@ impl ConnectionPool {
 				})?;
 
 				upstream::UpstreamTarget {
-					filters: target.filters.clone(), // From the outer 'target' variable
 					spec: upstream::UpstreamTargetSpec::OpenAPI(Box::new(crate::mcp::openapi::Handler {
 						host: open.host.clone(),
 						client: self.client.clone(),

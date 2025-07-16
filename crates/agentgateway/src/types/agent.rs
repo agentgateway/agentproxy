@@ -14,6 +14,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use openapiv3::OpenAPI;
+use prometheus_client::encoding::EncodeLabelValue;
 use regex::Regex;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::{ClientConfig, ServerConfig};
@@ -122,6 +123,17 @@ impl ListenerProtocol {
 			_ => None,
 		}
 	}
+}
+
+// Protocol of the entire bind. TODO: we should make this a property of the API
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EncodeLabelValue)]
+#[allow(non_camel_case_types)]
+pub enum BindProtocol {
+	http,
+	https,
+	hbone,
+	tcp,
+	tls,
 }
 
 pub type ListenerKey = Strng;
@@ -474,8 +486,6 @@ pub struct McpTarget {
 	pub name: McpTargetName,
 	#[serde(flatten)]
 	pub spec: McpTargetSpec,
-	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub filters: Vec<mcp::relay::upstream::Filter>,
 }
 
 type McpTargetName = Strng;
@@ -506,7 +516,7 @@ pub enum McpTargetSpec {
 pub struct SseTargetSpec {
 	// TODO: reference a service
 	pub host: String,
-	pub port: u32,
+	pub port: u16,
 	pub path: String,
 }
 
@@ -516,7 +526,7 @@ pub struct SseTargetSpec {
 pub struct StreamableHTTPTargetSpec {
 	// TODO: reference a service
 	pub host: String,
-	pub port: u32,
+	pub port: u16,
 	pub path: String,
 }
 
@@ -525,7 +535,7 @@ pub struct StreamableHTTPTargetSpec {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct OpenAPITarget {
 	pub host: String,
-	pub port: u32,
+	pub port: u16,
 	#[serde(deserialize_with = "de_openapi")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	pub schema: Arc<OpenAPI>,
@@ -596,8 +606,8 @@ impl ListenerSet {
 		self.inner.values().find(|l| l.hostname.is_empty()).cloned()
 	}
 
-	pub fn insert(&mut self, k: ListenerKey, v: Listener) {
-		self.inner.insert(k, Arc::new(v));
+	pub fn insert(&mut self, v: Listener) {
+		self.inner.insert(v.key.clone(), Arc::new(v));
 	}
 
 	pub fn contains(&self, key: &ListenerKey) -> bool {

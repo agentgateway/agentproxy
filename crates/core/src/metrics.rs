@@ -163,6 +163,12 @@ impl From<&Option<Strng>> for DefaultedUnknown<RichStrng> {
 	}
 }
 
+impl From<Option<&Strng>> for DefaultedUnknown<RichStrng> {
+	fn from(t: Option<&Strng>) -> Self {
+		DefaultedUnknown(t.map(RichStrng::from))
+	}
+}
+
 impl<T> From<Option<T>> for DefaultedUnknown<T> {
 	fn from(t: Option<T>) -> Self {
 		DefaultedUnknown(t)
