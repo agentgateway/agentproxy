@@ -108,7 +108,7 @@ async fn setup() -> (MockServer, Handler) {
 	let handler = Handler {
 		host: parsed.host().unwrap().to_string(),
 		prefix: "".to_string(),
-		port: parsed.port().unwrap_or(8080) as u32,
+		port: parsed.port().unwrap_or(8080),
 		client,
 		tools: vec![
 			(test_tool_get, upstream_call_get),

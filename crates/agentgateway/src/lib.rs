@@ -73,6 +73,9 @@ pub struct RawConfig {
 	cluster_id: Option<String>,
 	network: Option<String>,
 
+	// Admin UI address in the format "ip:port"
+	admin_addr: Option<String>,
+
 	auth_token: Option<String>,
 
 	connection_termination_deadline: Option<Duration>,

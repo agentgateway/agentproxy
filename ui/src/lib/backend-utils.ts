@@ -171,7 +171,7 @@ export const validateCommonFields = (
 ): boolean => {
   if (!form.name.trim()) return false;
   // Only validate route selection when adding (not editing)
-  if (!editingBackend && (!form.selectedBindPort || !form.selectedRouteIndex)) return false;
+  if (!editingBackend && (!form.selectedBindPort || form.selectedRouteIndex === "")) return false;
 
   // Validate weight is a positive integer
   const weight = parseInt(form.weight);

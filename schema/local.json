@@ -178,85 +178,6 @@
                                       "items": {
                                         "type": "object",
                                         "properties": {
-                                          "filters": {
-                                            "type": "array",
-                                            "items": {
-                                              "type": "object",
-                                              "properties": {
-                                                "matcher": {
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "Equals": {
-                                                          "type": "string"
-                                                        }
-                                                      },
-                                                      "additionalProperties": false,
-                                                      "required": [
-                                                        "Equals"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "Prefix": {
-                                                          "type": "string"
-                                                        }
-                                                      },
-                                                      "additionalProperties": false,
-                                                      "required": [
-                                                        "Prefix"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "Suffix": {
-                                                          "type": "string"
-                                                        }
-                                                      },
-                                                      "additionalProperties": false,
-                                                      "required": [
-                                                        "Suffix"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "Contains": {
-                                                          "type": "string"
-                                                        }
-                                                      },
-                                                      "additionalProperties": false,
-                                                      "required": [
-                                                        "Contains"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "object",
-                                                      "properties": {
-                                                        "Regex": {
-                                                          "type": "string"
-                                                        }
-                                                      },
-                                                      "additionalProperties": false,
-                                                      "required": [
-                                                        "Regex"
-                                                      ]
-                                                    }
-                                                  ]
-                                                },
-                                                "resource_type": {
-                                                  "type": "string"
-                                                }
-                                              },
-                                              "required": [
-                                                "matcher",
-                                                "resource_type"
-                                              ]
-                                            }
-                                          },
                                           "name": {
                                             "type": "string"
                                           }
@@ -276,7 +197,8 @@
                                                   },
                                                   "port": {
                                                     "type": "integer",
-                                                    "format": "uint32",
+                                                    "format": "uint16",
+                                                    "maximum": 65535,
                                                     "minimum": 0
                                                   }
                                                 },
@@ -305,7 +227,8 @@
                                                   },
                                                   "port": {
                                                     "type": "integer",
-                                                    "format": "uint32",
+                                                    "format": "uint16",
+                                                    "maximum": 65535,
                                                     "minimum": 0
                                                   }
                                                 },
@@ -362,7 +285,8 @@
                                                   },
                                                   "port": {
                                                     "type": "integer",
-                                                    "format": "uint32",
+                                                    "format": "uint16",
+                                                    "maximum": 65535,
                                                     "minimum": 0
                                                   },
                                                   "schema": true

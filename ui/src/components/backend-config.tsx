@@ -115,7 +115,12 @@ export function BackendConfig() {
 
       <AddBackendDialog
         open={isAddBackendDialogOpen}
-        onOpenChange={setIsAddBackendDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancel();
+          }
+          setIsAddBackendDialogOpen(open);
+        }}
         binds={binds}
         backendForm={backendForm}
         setBackendForm={setBackendForm}

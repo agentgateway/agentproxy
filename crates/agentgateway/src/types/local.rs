@@ -333,7 +333,7 @@ async fn convert(client: client::Client, i: LocalConfig) -> anyhow::Result<Norma
 			let (l, pol, backends) = convert_listener(client.clone(), bind_name.clone(), idx, l).await?;
 			all_policies.extend_from_slice(&pol);
 			all_backends.extend_from_slice(&backends);
-			ls.insert(l.key.clone(), l)
+			ls.insert(l)
 		}
 		let b = Bind {
 			key: bind_name,

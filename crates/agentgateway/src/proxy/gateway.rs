@@ -1,7 +1,8 @@
 use crate::ProxyInputs;
 use crate::store::Event;
+use crate::telemetry::metrics::TCPLabels;
 use crate::transport::stream::{BytesCounter, Extension, LoggingMode, Socket};
-use crate::types::agent::{Bind, BindName, Listener, ListenerProtocol};
+use crate::types::agent::{Bind, BindName, BindProtocol, Listener, ListenerProtocol};
 use agent_core::drain;
 use agent_core::drain::{DrainUpgrader, DrainWatcher};
 use anyhow::anyhow;
@@ -208,14 +209,14 @@ impl Gateway {
 			"opened",
 		);
 		match bind_protocol {
-			BindProtocol::Http => {
+			BindProtocol::http => {
 				let err = Self::proxy(bind_name, inputs, None, raw_stream, drain).await;
 				if let Err(e) = err {
 					warn!("proxy error: {e}");
 				}
 			},
-			BindProtocol::Tcp => Self::proxy_tcp(bind_name, inputs, None, raw_stream, drain).await,
-			BindProtocol::Tls => {
+			BindProtocol::tcp => Self::proxy_tcp(bind_name, inputs, None, raw_stream, drain).await,
+			BindProtocol::tls => {
 				let Ok((selected_listener, stream)) =
 					Self::terminate_tls(inputs.clone(), raw_stream, bind_name.clone()).await
 				else {
@@ -225,7 +226,7 @@ impl Gateway {
 				};
 				Self::proxy_tcp(bind_name, inputs, Some(selected_listener), stream, drain).await
 			},
-			BindProtocol::Https => {
+			BindProtocol::https => {
 				let (selected_listener, stream) =
 					match Self::terminate_tls(inputs.clone(), raw_stream, bind_name.clone()).await {
 						Ok(res) => res,
@@ -236,7 +237,7 @@ impl Gateway {
 					};
 				let _ = Self::proxy(bind_name, inputs, Some(selected_listener), stream, drain).await;
 			},
-			BindProtocol::Hbone => {
+			BindProtocol::hbone => {
 				let _ = Self::terminate_hbone(bind_name, inputs, raw_stream, drain).await;
 			},
 		}
@@ -407,37 +408,27 @@ fn bind_protocol(inp: Arc<ProxyInputs>, bind: BindName) -> BindProtocol {
 		.iter()
 		.any(|l| matches!(l.protocol, ListenerProtocol::HBONE))
 	{
-		return BindProtocol::Hbone;
+		return BindProtocol::hbone;
 	}
 	if listeners
 		.iter()
 		.any(|l| matches!(l.protocol, ListenerProtocol::HTTPS(_)))
 	{
-		return BindProtocol::Https;
+		return BindProtocol::https;
 	}
 	if listeners
 		.iter()
 		.any(|l| matches!(l.protocol, ListenerProtocol::TLS(_)))
 	{
-		return BindProtocol::Tls;
+		return BindProtocol::tls;
 	}
 	if listeners
 		.iter()
 		.any(|l| matches!(l.protocol, ListenerProtocol::TCP))
 	{
-		return BindProtocol::Tcp;
+		return BindProtocol::tcp;
 	}
-	BindProtocol::Http
-}
-
-// Protocol of the entire bind. TODO: we should make this a property of the API
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-enum BindProtocol {
-	Http,
-	Https,
-	Hbone,
-	Tcp,
-	Tls,
+	BindProtocol::http
 }
 
 pub fn auto_server() -> auto::Builder<::hyper_util::rt::TokioExecutor> {

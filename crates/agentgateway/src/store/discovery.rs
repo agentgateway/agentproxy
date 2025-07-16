@@ -61,7 +61,7 @@ impl Store {
 		fields(uid=%w.uid),
 	)]
 	pub fn insert_workload(&mut self, w: XdsWorkload) -> anyhow::Result<()> {
-		debug!("handling insert");
+		debug!(uid=%w.uid, "handling insert");
 
 		// Clone services, so we can pass full ownership of the rest of XdsWorkload to build our Workload
 		// object, which doesn't include Services.

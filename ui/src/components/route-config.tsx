@@ -162,7 +162,12 @@ export function RouteConfig() {
 
       <AddRouteDialog
         open={isAddRouteDialogOpen}
-        onOpenChange={setIsAddRouteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDialogs();
+          }
+          setIsAddRouteDialogOpen(open);
+        }}
         routeForm={routeForm}
         setRouteForm={setRouteForm}
         tcpRouteForm={tcpRouteForm}
@@ -177,7 +182,12 @@ export function RouteConfig() {
 
       <EditRouteDialog
         open={isEditRouteDialogOpen}
-        onOpenChange={setIsEditRouteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDialogs();
+          }
+          setIsEditRouteDialogOpen(open);
+        }}
         routeForm={routeForm}
         setRouteForm={setRouteForm}
         editingRoute={editingRoute}
@@ -188,7 +198,12 @@ export function RouteConfig() {
 
       <EditTcpRouteDialog
         open={isEditTcpRouteDialogOpen}
-        onOpenChange={setIsEditTcpRouteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDialogs();
+          }
+          setIsEditTcpRouteDialogOpen(open);
+        }}
         tcpRouteForm={tcpRouteForm}
         setTcpRouteForm={setTcpRouteForm}
         editingTcpRoute={editingTcpRoute}

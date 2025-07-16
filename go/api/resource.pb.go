@@ -82,6 +82,55 @@ func (Protocol) EnumDescriptor() ([]byte, []int) {
 	return file_resource_proto_rawDescGZIP(), []int{0}
 }
 
+type MCPTarget_Protocol int32
+
+const (
+	MCPTarget_UNDEFINED       MCPTarget_Protocol = 0
+	MCPTarget_SSE             MCPTarget_Protocol = 1
+	MCPTarget_STREAMABLE_HTTP MCPTarget_Protocol = 2
+)
+
+// Enum value maps for MCPTarget_Protocol.
+var (
+	MCPTarget_Protocol_name = map[int32]string{
+		0: "UNDEFINED",
+		1: "SSE",
+		2: "STREAMABLE_HTTP",
+	}
+	MCPTarget_Protocol_value = map[string]int32{
+		"UNDEFINED":       0,
+		"SSE":             1,
+		"STREAMABLE_HTTP": 2,
+	}
+)
+
+func (x MCPTarget_Protocol) Enum() *MCPTarget_Protocol {
+	p := new(MCPTarget_Protocol)
+	*p = x
+	return p
+}
+
+func (x MCPTarget_Protocol) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MCPTarget_Protocol) Descriptor() protoreflect.EnumDescriptor {
+	return file_resource_proto_enumTypes[1].Descriptor()
+}
+
+func (MCPTarget_Protocol) Type() protoreflect.EnumType {
+	return &file_resource_proto_enumTypes[1]
+}
+
+func (x MCPTarget_Protocol) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MCPTarget_Protocol.Descriptor instead.
+func (MCPTarget_Protocol) EnumDescriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{22, 0}
+}
+
 type Resource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Kind:
@@ -89,6 +138,7 @@ type Resource struct {
 	//	*Resource_Bind
 	//	*Resource_Listener
 	//	*Resource_Route
+	//	*Resource_Backend
 	Kind          isResource_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -158,6 +208,15 @@ func (x *Resource) GetRoute() *Route {
 	return nil
 }
 
+func (x *Resource) GetBackend() *Backend {
+	if x != nil {
+		if x, ok := x.Kind.(*Resource_Backend); ok {
+			return x.Backend
+		}
+	}
+	return nil
+}
+
 type isResource_Kind interface {
 	isResource_Kind()
 }
@@ -174,11 +233,17 @@ type Resource_Route struct {
 	Route *Route `protobuf:"bytes,3,opt,name=route,proto3,oneof"`
 }
 
+type Resource_Backend struct {
+	Backend *Backend `protobuf:"bytes,4,opt,name=backend,proto3,oneof"`
+}
+
 func (*Resource_Bind) isResource_Kind() {}
 
 func (*Resource_Listener) isResource_Kind() {}
 
 func (*Resource_Route) isResource_Kind() {}
+
+func (*Resource_Backend) isResource_Kind() {}
 
 type Bind struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1466,6 +1531,7 @@ type RouteBackend struct {
 	// Types that are valid to be assigned to Kind:
 	//
 	//	*RouteBackend_Service
+	//	*RouteBackend_Backend
 	Kind          isRouteBackend_Kind `protobuf_oneof:"kind"`
 	Weight        int32               `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
 	Port          int32               `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
@@ -1520,6 +1586,15 @@ func (x *RouteBackend) GetService() string {
 	return ""
 }
 
+func (x *RouteBackend) GetBackend() string {
+	if x != nil {
+		if x, ok := x.Kind.(*RouteBackend_Backend); ok {
+			return x.Backend
+		}
+	}
+	return ""
+}
+
 func (x *RouteBackend) GetWeight() int32 {
 	if x != nil {
 		return x.Weight
@@ -1546,20 +1621,778 @@ type isRouteBackend_Kind interface {
 }
 
 type RouteBackend_Service struct {
+	// A service (could be Service, ServiceEntry, etc) in "<ns>/<hostname>" format
+	// These are joined with the service discovery.
 	Service string `protobuf:"bytes,1,opt,name=service,proto3,oneof"`
 }
 
+type RouteBackend_Backend struct {
+	// A Backend object.
+	// Format is "<ns>/<name>". Joined with the Backend object
+	Backend string `protobuf:"bytes,5,opt,name=backend,proto3,oneof"`
+}
+
 func (*RouteBackend_Service) isRouteBackend_Kind() {}
+
+func (*RouteBackend_Backend) isRouteBackend_Kind() {}
+
+type Backend struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Format is "<ns>/<name>"
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*Backend_Static
+	//	*Backend_Ai
+	//	*Backend_Mcp
+	Kind          isBackend_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Backend) Reset() {
+	*x = Backend{}
+	mi := &file_resource_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Backend) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Backend) ProtoMessage() {}
+
+func (x *Backend) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Backend.ProtoReflect.Descriptor instead.
+func (*Backend) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *Backend) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Backend) GetKind() isBackend_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *Backend) GetStatic() *StaticBackend {
+	if x != nil {
+		if x, ok := x.Kind.(*Backend_Static); ok {
+			return x.Static
+		}
+	}
+	return nil
+}
+
+func (x *Backend) GetAi() *AIBackend {
+	if x != nil {
+		if x, ok := x.Kind.(*Backend_Ai); ok {
+			return x.Ai
+		}
+	}
+	return nil
+}
+
+func (x *Backend) GetMcp() *MCPBackend {
+	if x != nil {
+		if x, ok := x.Kind.(*Backend_Mcp); ok {
+			return x.Mcp
+		}
+	}
+	return nil
+}
+
+type isBackend_Kind interface {
+	isBackend_Kind()
+}
+
+type Backend_Static struct {
+	Static *StaticBackend `protobuf:"bytes,2,opt,name=static,proto3,oneof"`
+}
+
+type Backend_Ai struct {
+	Ai *AIBackend `protobuf:"bytes,3,opt,name=ai,proto3,oneof"`
+}
+
+type Backend_Mcp struct {
+	Mcp *MCPBackend `protobuf:"bytes,4,opt,name=mcp,proto3,oneof"`
+}
+
+func (*Backend_Static) isBackend_Kind() {}
+
+func (*Backend_Ai) isBackend_Kind() {}
+
+func (*Backend_Mcp) isBackend_Kind() {}
+
+type StaticBackend struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Host          string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	Port          int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StaticBackend) Reset() {
+	*x = StaticBackend{}
+	mi := &file_resource_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StaticBackend) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StaticBackend) ProtoMessage() {}
+
+func (x *StaticBackend) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StaticBackend.ProtoReflect.Descriptor instead.
+func (*StaticBackend) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *StaticBackend) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *StaticBackend) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+type AIBackend struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Override *AIBackend_Override    `protobuf:"bytes,1,opt,name=override,proto3" json:"override,omitempty"`
+	// Types that are valid to be assigned to Provider:
+	//
+	//	*AIBackend_Openai
+	//	*AIBackend_Gemini_
+	//	*AIBackend_Vertex_
+	//	*AIBackend_Anthropic_
+	//	*AIBackend_Bedrock_
+	Provider      isAIBackend_Provider `protobuf_oneof:"provider"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend) Reset() {
+	*x = AIBackend{}
+	mi := &file_resource_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend) ProtoMessage() {}
+
+func (x *AIBackend) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend.ProtoReflect.Descriptor instead.
+func (*AIBackend) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AIBackend) GetOverride() *AIBackend_Override {
+	if x != nil {
+		return x.Override
+	}
+	return nil
+}
+
+func (x *AIBackend) GetProvider() isAIBackend_Provider {
+	if x != nil {
+		return x.Provider
+	}
+	return nil
+}
+
+func (x *AIBackend) GetOpenai() *AIBackend_OpenAI {
+	if x != nil {
+		if x, ok := x.Provider.(*AIBackend_Openai); ok {
+			return x.Openai
+		}
+	}
+	return nil
+}
+
+func (x *AIBackend) GetGemini() *AIBackend_Gemini {
+	if x != nil {
+		if x, ok := x.Provider.(*AIBackend_Gemini_); ok {
+			return x.Gemini
+		}
+	}
+	return nil
+}
+
+func (x *AIBackend) GetVertex() *AIBackend_Vertex {
+	if x != nil {
+		if x, ok := x.Provider.(*AIBackend_Vertex_); ok {
+			return x.Vertex
+		}
+	}
+	return nil
+}
+
+func (x *AIBackend) GetAnthropic() *AIBackend_Anthropic {
+	if x != nil {
+		if x, ok := x.Provider.(*AIBackend_Anthropic_); ok {
+			return x.Anthropic
+		}
+	}
+	return nil
+}
+
+func (x *AIBackend) GetBedrock() *AIBackend_Bedrock {
+	if x != nil {
+		if x, ok := x.Provider.(*AIBackend_Bedrock_); ok {
+			return x.Bedrock
+		}
+	}
+	return nil
+}
+
+type isAIBackend_Provider interface {
+	isAIBackend_Provider()
+}
+
+type AIBackend_Openai struct {
+	Openai *AIBackend_OpenAI `protobuf:"bytes,2,opt,name=openai,proto3,oneof"`
+}
+
+type AIBackend_Gemini_ struct {
+	Gemini *AIBackend_Gemini `protobuf:"bytes,3,opt,name=gemini,proto3,oneof"`
+}
+
+type AIBackend_Vertex_ struct {
+	Vertex *AIBackend_Vertex `protobuf:"bytes,4,opt,name=vertex,proto3,oneof"`
+}
+
+type AIBackend_Anthropic_ struct {
+	Anthropic *AIBackend_Anthropic `protobuf:"bytes,5,opt,name=anthropic,proto3,oneof"`
+}
+
+type AIBackend_Bedrock_ struct {
+	Bedrock *AIBackend_Bedrock `protobuf:"bytes,6,opt,name=bedrock,proto3,oneof"`
+}
+
+func (*AIBackend_Openai) isAIBackend_Provider() {}
+
+func (*AIBackend_Gemini_) isAIBackend_Provider() {}
+
+func (*AIBackend_Vertex_) isAIBackend_Provider() {}
+
+func (*AIBackend_Anthropic_) isAIBackend_Provider() {}
+
+func (*AIBackend_Bedrock_) isAIBackend_Provider() {}
+
+type MCPBackend struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Targets       []*MCPTarget           `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPBackend) Reset() {
+	*x = MCPBackend{}
+	mi := &file_resource_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPBackend) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPBackend) ProtoMessage() {}
+
+func (x *MCPBackend) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPBackend.ProtoReflect.Descriptor instead.
+func (*MCPBackend) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *MCPBackend) GetTargets() []*MCPTarget {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+type MCPTarget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*MCPTarget_Service
+	//	*MCPTarget_Backend
+	Kind          isMCPTarget_Kind   `protobuf_oneof:"kind"`
+	Port          int32              `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
+	Protocol      MCPTarget_Protocol `protobuf:"varint,5,opt,name=protocol,proto3,enum=agentgateway.dev.resource.MCPTarget_Protocol" json:"protocol,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPTarget) Reset() {
+	*x = MCPTarget{}
+	mi := &file_resource_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPTarget) ProtoMessage() {}
+
+func (x *MCPTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPTarget.ProtoReflect.Descriptor instead.
+func (*MCPTarget) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *MCPTarget) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MCPTarget) GetKind() isMCPTarget_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *MCPTarget) GetService() string {
+	if x != nil {
+		if x, ok := x.Kind.(*MCPTarget_Service); ok {
+			return x.Service
+		}
+	}
+	return ""
+}
+
+func (x *MCPTarget) GetBackend() string {
+	if x != nil {
+		if x, ok := x.Kind.(*MCPTarget_Backend); ok {
+			return x.Backend
+		}
+	}
+	return ""
+}
+
+func (x *MCPTarget) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *MCPTarget) GetProtocol() MCPTarget_Protocol {
+	if x != nil {
+		return x.Protocol
+	}
+	return MCPTarget_UNDEFINED
+}
+
+type isMCPTarget_Kind interface {
+	isMCPTarget_Kind()
+}
+
+type MCPTarget_Service struct {
+	// A service (could be Service, ServiceEntry, etc) in "<ns>/<hostname>" format
+	// These are joined with the service discovery.
+	Service string `protobuf:"bytes,2,opt,name=service,proto3,oneof"`
+}
+
+type MCPTarget_Backend struct {
+	// A Backend object.
+	// Format is "<ns>/<name>". Joined with the Backend object
+	Backend string `protobuf:"bytes,3,opt,name=backend,proto3,oneof"`
+}
+
+func (*MCPTarget_Service) isMCPTarget_Kind() {}
+
+func (*MCPTarget_Backend) isMCPTarget_Kind() {}
+
+type AIBackend_Override struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Host          string                 `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	Port          int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_Override) Reset() {
+	*x = AIBackend_Override{}
+	mi := &file_resource_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_Override) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_Override) ProtoMessage() {}
+
+func (x *AIBackend_Override) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_Override.ProtoReflect.Descriptor instead.
+func (*AIBackend_Override) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 0}
+}
+
+func (x *AIBackend_Override) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *AIBackend_Override) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+type AIBackend_OpenAI struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_OpenAI) Reset() {
+	*x = AIBackend_OpenAI{}
+	mi := &file_resource_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_OpenAI) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_OpenAI) ProtoMessage() {}
+
+func (x *AIBackend_OpenAI) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_OpenAI.ProtoReflect.Descriptor instead.
+func (*AIBackend_OpenAI) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 1}
+}
+
+func (x *AIBackend_OpenAI) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+type AIBackend_Gemini struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_Gemini) Reset() {
+	*x = AIBackend_Gemini{}
+	mi := &file_resource_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_Gemini) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_Gemini) ProtoMessage() {}
+
+func (x *AIBackend_Gemini) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_Gemini.ProtoReflect.Descriptor instead.
+func (*AIBackend_Gemini) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 2}
+}
+
+func (x *AIBackend_Gemini) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+type AIBackend_Vertex struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_Vertex) Reset() {
+	*x = AIBackend_Vertex{}
+	mi := &file_resource_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_Vertex) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_Vertex) ProtoMessage() {}
+
+func (x *AIBackend_Vertex) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_Vertex.ProtoReflect.Descriptor instead.
+func (*AIBackend_Vertex) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 3}
+}
+
+func (x *AIBackend_Vertex) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *AIBackend_Vertex) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *AIBackend_Vertex) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+type AIBackend_Anthropic struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_Anthropic) Reset() {
+	*x = AIBackend_Anthropic{}
+	mi := &file_resource_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_Anthropic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_Anthropic) ProtoMessage() {}
+
+func (x *AIBackend_Anthropic) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_Anthropic.ProtoReflect.Descriptor instead.
+func (*AIBackend_Anthropic) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 4}
+}
+
+func (x *AIBackend_Anthropic) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+type AIBackend_Bedrock struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIBackend_Bedrock) Reset() {
+	*x = AIBackend_Bedrock{}
+	mi := &file_resource_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIBackend_Bedrock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIBackend_Bedrock) ProtoMessage() {}
+
+func (x *AIBackend_Bedrock) ProtoReflect() protoreflect.Message {
+	mi := &file_resource_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIBackend_Bedrock.ProtoReflect.Descriptor instead.
+func (*AIBackend_Bedrock) Descriptor() ([]byte, []int) {
+	return file_resource_proto_rawDescGZIP(), []int{20, 5}
+}
+
+func (x *AIBackend_Bedrock) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *AIBackend_Bedrock) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
 
 var File_resource_proto protoreflect.FileDescriptor
 
 const file_resource_proto_rawDesc = "" +
 	"\n" +
-	"\x0eresource.proto\x12\x19agentgateway.dev.resource\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x19google/protobuf/any.proto\x1a\x1egoogle/protobuf/duration.proto\"\xc6\x01\n" +
+	"\x0eresource.proto\x12\x19agentgateway.dev.resource\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x19google/protobuf/any.proto\x1a\x1egoogle/protobuf/duration.proto\"\x86\x02\n" +
 	"\bResource\x125\n" +
 	"\x04bind\x18\x01 \x01(\v2\x1f.agentgateway.dev.resource.BindH\x00R\x04bind\x12A\n" +
 	"\blistener\x18\x02 \x01(\v2#.agentgateway.dev.resource.ListenerH\x00R\blistener\x128\n" +
-	"\x05route\x18\x03 \x01(\v2 .agentgateway.dev.resource.RouteH\x00R\x05routeB\x06\n" +
+	"\x05route\x18\x03 \x01(\v2 .agentgateway.dev.resource.RouteH\x00R\x05route\x12>\n" +
+	"\abackend\x18\x04 \x01(\v2\".agentgateway.dev.resource.BackendH\x00R\abackendB\x06\n" +
 	"\x04kind\",\n" +
 	"\x04Bind\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
@@ -1650,12 +2483,62 @@ const file_resource_proto_rawDesc = "" +
 	"\x04path\"2\n" +
 	"\x06Header\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xa0\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xbc\x01\n" +
 	"\fRouteBackend\x12\x1a\n" +
-	"\aservice\x18\x01 \x01(\tH\x00R\aservice\x12\x16\n" +
+	"\aservice\x18\x01 \x01(\tH\x00R\aservice\x12\x1a\n" +
+	"\abackend\x18\x05 \x01(\tH\x00R\abackend\x12\x16\n" +
 	"\x06weight\x18\x02 \x01(\x05R\x06weight\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12@\n" +
 	"\afilters\x18\x04 \x03(\v2&.agentgateway.dev.resource.RouteFilterR\afiltersB\x06\n" +
+	"\x04kind\"\xdc\x01\n" +
+	"\aBackend\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12B\n" +
+	"\x06static\x18\x02 \x01(\v2(.agentgateway.dev.resource.StaticBackendH\x00R\x06static\x126\n" +
+	"\x02ai\x18\x03 \x01(\v2$.agentgateway.dev.resource.AIBackendH\x00R\x02ai\x129\n" +
+	"\x03mcp\x18\x04 \x01(\v2%.agentgateway.dev.resource.MCPBackendH\x00R\x03mcpB\x06\n" +
+	"\x04kind\"7\n" +
+	"\rStaticBackend\x12\x12\n" +
+	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x02 \x01(\x05R\x04port\"\xf8\x05\n" +
+	"\tAIBackend\x12I\n" +
+	"\boverride\x18\x01 \x01(\v2-.agentgateway.dev.resource.AIBackend.OverrideR\boverride\x12E\n" +
+	"\x06openai\x18\x02 \x01(\v2+.agentgateway.dev.resource.AIBackend.OpenAIH\x00R\x06openai\x12E\n" +
+	"\x06gemini\x18\x03 \x01(\v2+.agentgateway.dev.resource.AIBackend.GeminiH\x00R\x06gemini\x12E\n" +
+	"\x06vertex\x18\x04 \x01(\v2+.agentgateway.dev.resource.AIBackend.VertexH\x00R\x06vertex\x12N\n" +
+	"\tanthropic\x18\x05 \x01(\v2..agentgateway.dev.resource.AIBackend.AnthropicH\x00R\tanthropic\x12H\n" +
+	"\abedrock\x18\x06 \x01(\v2,.agentgateway.dev.resource.AIBackend.BedrockH\x00R\abedrock\x1a2\n" +
+	"\bOverride\x12\x12\n" +
+	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x02 \x01(\x05R\x04port\x1a\x1e\n" +
+	"\x06OpenAI\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x1a\x1e\n" +
+	"\x06Gemini\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x1aU\n" +
+	"\x06Vertex\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
+	"\x06region\x18\x02 \x01(\tR\x06region\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x03 \x01(\tR\tprojectId\x1a!\n" +
+	"\tAnthropic\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x1a7\n" +
+	"\aBedrock\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
+	"\x06region\x18\x02 \x01(\tR\x06regionB\n" +
+	"\n" +
+	"\bprovider\"L\n" +
+	"\n" +
+	"MCPBackend\x12>\n" +
+	"\atargets\x18\x02 \x03(\v2$.agentgateway.dev.resource.MCPTargetR\atargets\"\xf7\x01\n" +
+	"\tMCPTarget\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
+	"\aservice\x18\x02 \x01(\tH\x00R\aservice\x12\x1a\n" +
+	"\abackend\x18\x03 \x01(\tH\x00R\abackend\x12\x12\n" +
+	"\x04port\x18\x04 \x01(\x05R\x04port\x12I\n" +
+	"\bprotocol\x18\x05 \x01(\x0e2-.agentgateway.dev.resource.MCPTarget.ProtocolR\bprotocol\"7\n" +
+	"\bProtocol\x12\r\n" +
+	"\tUNDEFINED\x10\x00\x12\a\n" +
+	"\x03SSE\x10\x01\x12\x13\n" +
+	"\x0fSTREAMABLE_HTTP\x10\x02B\x06\n" +
 	"\x04kind*I\n" +
 	"\bProtocol\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\b\n" +
@@ -1677,59 +2560,83 @@ func file_resource_proto_rawDescGZIP() []byte {
 	return file_resource_proto_rawDescData
 }
 
-var file_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_resource_proto_goTypes = []any{
-	(Protocol)(0),             // 0: agentgateway.dev.resource.Protocol
-	(*Resource)(nil),          // 1: agentgateway.dev.resource.Resource
-	(*Bind)(nil),              // 2: agentgateway.dev.resource.Bind
-	(*Listener)(nil),          // 3: agentgateway.dev.resource.Listener
-	(*TLSConfig)(nil),         // 4: agentgateway.dev.resource.TLSConfig
-	(*Route)(nil),             // 5: agentgateway.dev.resource.Route
-	(*TrafficPolicy)(nil),     // 6: agentgateway.dev.resource.TrafficPolicy
-	(*RouteMatch)(nil),        // 7: agentgateway.dev.resource.RouteMatch
-	(*PathMatch)(nil),         // 8: agentgateway.dev.resource.PathMatch
-	(*QueryMatch)(nil),        // 9: agentgateway.dev.resource.QueryMatch
-	(*MethodMatch)(nil),       // 10: agentgateway.dev.resource.MethodMatch
-	(*HeaderMatch)(nil),       // 11: agentgateway.dev.resource.HeaderMatch
-	(*RouteFilter)(nil),       // 12: agentgateway.dev.resource.RouteFilter
-	(*HeaderModifier)(nil),    // 13: agentgateway.dev.resource.HeaderModifier
-	(*RequestMirror)(nil),     // 14: agentgateway.dev.resource.RequestMirror
-	(*RequestRedirect)(nil),   // 15: agentgateway.dev.resource.RequestRedirect
-	(*UrlRewrite)(nil),        // 16: agentgateway.dev.resource.UrlRewrite
-	(*Header)(nil),            // 17: agentgateway.dev.resource.Header
-	(*RouteBackend)(nil),      // 18: agentgateway.dev.resource.RouteBackend
-	(*duration.Duration)(nil), // 19: google.protobuf.Duration
+	(Protocol)(0),               // 0: agentgateway.dev.resource.Protocol
+	(MCPTarget_Protocol)(0),     // 1: agentgateway.dev.resource.MCPTarget.Protocol
+	(*Resource)(nil),            // 2: agentgateway.dev.resource.Resource
+	(*Bind)(nil),                // 3: agentgateway.dev.resource.Bind
+	(*Listener)(nil),            // 4: agentgateway.dev.resource.Listener
+	(*TLSConfig)(nil),           // 5: agentgateway.dev.resource.TLSConfig
+	(*Route)(nil),               // 6: agentgateway.dev.resource.Route
+	(*TrafficPolicy)(nil),       // 7: agentgateway.dev.resource.TrafficPolicy
+	(*RouteMatch)(nil),          // 8: agentgateway.dev.resource.RouteMatch
+	(*PathMatch)(nil),           // 9: agentgateway.dev.resource.PathMatch
+	(*QueryMatch)(nil),          // 10: agentgateway.dev.resource.QueryMatch
+	(*MethodMatch)(nil),         // 11: agentgateway.dev.resource.MethodMatch
+	(*HeaderMatch)(nil),         // 12: agentgateway.dev.resource.HeaderMatch
+	(*RouteFilter)(nil),         // 13: agentgateway.dev.resource.RouteFilter
+	(*HeaderModifier)(nil),      // 14: agentgateway.dev.resource.HeaderModifier
+	(*RequestMirror)(nil),       // 15: agentgateway.dev.resource.RequestMirror
+	(*RequestRedirect)(nil),     // 16: agentgateway.dev.resource.RequestRedirect
+	(*UrlRewrite)(nil),          // 17: agentgateway.dev.resource.UrlRewrite
+	(*Header)(nil),              // 18: agentgateway.dev.resource.Header
+	(*RouteBackend)(nil),        // 19: agentgateway.dev.resource.RouteBackend
+	(*Backend)(nil),             // 20: agentgateway.dev.resource.Backend
+	(*StaticBackend)(nil),       // 21: agentgateway.dev.resource.StaticBackend
+	(*AIBackend)(nil),           // 22: agentgateway.dev.resource.AIBackend
+	(*MCPBackend)(nil),          // 23: agentgateway.dev.resource.MCPBackend
+	(*MCPTarget)(nil),           // 24: agentgateway.dev.resource.MCPTarget
+	(*AIBackend_Override)(nil),  // 25: agentgateway.dev.resource.AIBackend.Override
+	(*AIBackend_OpenAI)(nil),    // 26: agentgateway.dev.resource.AIBackend.OpenAI
+	(*AIBackend_Gemini)(nil),    // 27: agentgateway.dev.resource.AIBackend.Gemini
+	(*AIBackend_Vertex)(nil),    // 28: agentgateway.dev.resource.AIBackend.Vertex
+	(*AIBackend_Anthropic)(nil), // 29: agentgateway.dev.resource.AIBackend.Anthropic
+	(*AIBackend_Bedrock)(nil),   // 30: agentgateway.dev.resource.AIBackend.Bedrock
+	(*duration.Duration)(nil),   // 31: google.protobuf.Duration
 }
 var file_resource_proto_depIdxs = []int32{
-	2,  // 0: agentgateway.dev.resource.Resource.bind:type_name -> agentgateway.dev.resource.Bind
-	3,  // 1: agentgateway.dev.resource.Resource.listener:type_name -> agentgateway.dev.resource.Listener
-	5,  // 2: agentgateway.dev.resource.Resource.route:type_name -> agentgateway.dev.resource.Route
-	0,  // 3: agentgateway.dev.resource.Listener.protocol:type_name -> agentgateway.dev.resource.Protocol
-	4,  // 4: agentgateway.dev.resource.Listener.tls:type_name -> agentgateway.dev.resource.TLSConfig
-	7,  // 5: agentgateway.dev.resource.Route.matches:type_name -> agentgateway.dev.resource.RouteMatch
-	12, // 6: agentgateway.dev.resource.Route.filters:type_name -> agentgateway.dev.resource.RouteFilter
-	18, // 7: agentgateway.dev.resource.Route.backends:type_name -> agentgateway.dev.resource.RouteBackend
-	6,  // 8: agentgateway.dev.resource.Route.traffic_policy:type_name -> agentgateway.dev.resource.TrafficPolicy
-	19, // 9: agentgateway.dev.resource.TrafficPolicy.backend_request_timeout:type_name -> google.protobuf.Duration
-	19, // 10: agentgateway.dev.resource.TrafficPolicy.request_timeout:type_name -> google.protobuf.Duration
-	8,  // 11: agentgateway.dev.resource.RouteMatch.path:type_name -> agentgateway.dev.resource.PathMatch
-	11, // 12: agentgateway.dev.resource.RouteMatch.headers:type_name -> agentgateway.dev.resource.HeaderMatch
-	10, // 13: agentgateway.dev.resource.RouteMatch.method:type_name -> agentgateway.dev.resource.MethodMatch
-	9,  // 14: agentgateway.dev.resource.RouteMatch.query_params:type_name -> agentgateway.dev.resource.QueryMatch
-	13, // 15: agentgateway.dev.resource.RouteFilter.request_header_modifier:type_name -> agentgateway.dev.resource.HeaderModifier
-	13, // 16: agentgateway.dev.resource.RouteFilter.response_header_modifier:type_name -> agentgateway.dev.resource.HeaderModifier
-	15, // 17: agentgateway.dev.resource.RouteFilter.request_redirect:type_name -> agentgateway.dev.resource.RequestRedirect
-	16, // 18: agentgateway.dev.resource.RouteFilter.url_rewrite:type_name -> agentgateway.dev.resource.UrlRewrite
-	14, // 19: agentgateway.dev.resource.RouteFilter.request_mirror:type_name -> agentgateway.dev.resource.RequestMirror
-	17, // 20: agentgateway.dev.resource.HeaderModifier.add:type_name -> agentgateway.dev.resource.Header
-	17, // 21: agentgateway.dev.resource.HeaderModifier.set:type_name -> agentgateway.dev.resource.Header
-	12, // 22: agentgateway.dev.resource.RouteBackend.filters:type_name -> agentgateway.dev.resource.RouteFilter
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	3,  // 0: agentgateway.dev.resource.Resource.bind:type_name -> agentgateway.dev.resource.Bind
+	4,  // 1: agentgateway.dev.resource.Resource.listener:type_name -> agentgateway.dev.resource.Listener
+	6,  // 2: agentgateway.dev.resource.Resource.route:type_name -> agentgateway.dev.resource.Route
+	20, // 3: agentgateway.dev.resource.Resource.backend:type_name -> agentgateway.dev.resource.Backend
+	0,  // 4: agentgateway.dev.resource.Listener.protocol:type_name -> agentgateway.dev.resource.Protocol
+	5,  // 5: agentgateway.dev.resource.Listener.tls:type_name -> agentgateway.dev.resource.TLSConfig
+	8,  // 6: agentgateway.dev.resource.Route.matches:type_name -> agentgateway.dev.resource.RouteMatch
+	13, // 7: agentgateway.dev.resource.Route.filters:type_name -> agentgateway.dev.resource.RouteFilter
+	19, // 8: agentgateway.dev.resource.Route.backends:type_name -> agentgateway.dev.resource.RouteBackend
+	7,  // 9: agentgateway.dev.resource.Route.traffic_policy:type_name -> agentgateway.dev.resource.TrafficPolicy
+	31, // 10: agentgateway.dev.resource.TrafficPolicy.backend_request_timeout:type_name -> google.protobuf.Duration
+	31, // 11: agentgateway.dev.resource.TrafficPolicy.request_timeout:type_name -> google.protobuf.Duration
+	9,  // 12: agentgateway.dev.resource.RouteMatch.path:type_name -> agentgateway.dev.resource.PathMatch
+	12, // 13: agentgateway.dev.resource.RouteMatch.headers:type_name -> agentgateway.dev.resource.HeaderMatch
+	11, // 14: agentgateway.dev.resource.RouteMatch.method:type_name -> agentgateway.dev.resource.MethodMatch
+	10, // 15: agentgateway.dev.resource.RouteMatch.query_params:type_name -> agentgateway.dev.resource.QueryMatch
+	14, // 16: agentgateway.dev.resource.RouteFilter.request_header_modifier:type_name -> agentgateway.dev.resource.HeaderModifier
+	14, // 17: agentgateway.dev.resource.RouteFilter.response_header_modifier:type_name -> agentgateway.dev.resource.HeaderModifier
+	16, // 18: agentgateway.dev.resource.RouteFilter.request_redirect:type_name -> agentgateway.dev.resource.RequestRedirect
+	17, // 19: agentgateway.dev.resource.RouteFilter.url_rewrite:type_name -> agentgateway.dev.resource.UrlRewrite
+	15, // 20: agentgateway.dev.resource.RouteFilter.request_mirror:type_name -> agentgateway.dev.resource.RequestMirror
+	18, // 21: agentgateway.dev.resource.HeaderModifier.add:type_name -> agentgateway.dev.resource.Header
+	18, // 22: agentgateway.dev.resource.HeaderModifier.set:type_name -> agentgateway.dev.resource.Header
+	13, // 23: agentgateway.dev.resource.RouteBackend.filters:type_name -> agentgateway.dev.resource.RouteFilter
+	21, // 24: agentgateway.dev.resource.Backend.static:type_name -> agentgateway.dev.resource.StaticBackend
+	22, // 25: agentgateway.dev.resource.Backend.ai:type_name -> agentgateway.dev.resource.AIBackend
+	23, // 26: agentgateway.dev.resource.Backend.mcp:type_name -> agentgateway.dev.resource.MCPBackend
+	25, // 27: agentgateway.dev.resource.AIBackend.override:type_name -> agentgateway.dev.resource.AIBackend.Override
+	26, // 28: agentgateway.dev.resource.AIBackend.openai:type_name -> agentgateway.dev.resource.AIBackend.OpenAI
+	27, // 29: agentgateway.dev.resource.AIBackend.gemini:type_name -> agentgateway.dev.resource.AIBackend.Gemini
+	28, // 30: agentgateway.dev.resource.AIBackend.vertex:type_name -> agentgateway.dev.resource.AIBackend.Vertex
+	29, // 31: agentgateway.dev.resource.AIBackend.anthropic:type_name -> agentgateway.dev.resource.AIBackend.Anthropic
+	30, // 32: agentgateway.dev.resource.AIBackend.bedrock:type_name -> agentgateway.dev.resource.AIBackend.Bedrock
+	24, // 33: agentgateway.dev.resource.MCPBackend.targets:type_name -> agentgateway.dev.resource.MCPTarget
+	1,  // 34: agentgateway.dev.resource.MCPTarget.protocol:type_name -> agentgateway.dev.resource.MCPTarget.Protocol
+	35, // [35:35] is the sub-list for method output_type
+	35, // [35:35] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_resource_proto_init() }
@@ -1741,6 +2648,7 @@ func file_resource_proto_init() {
 		(*Resource_Bind)(nil),
 		(*Resource_Listener)(nil),
 		(*Resource_Route)(nil),
+		(*Resource_Backend)(nil),
 	}
 	file_resource_proto_msgTypes[7].OneofWrappers = []any{
 		(*PathMatch_Exact)(nil),
@@ -1775,14 +2683,31 @@ func file_resource_proto_init() {
 	}
 	file_resource_proto_msgTypes[17].OneofWrappers = []any{
 		(*RouteBackend_Service)(nil),
+		(*RouteBackend_Backend)(nil),
+	}
+	file_resource_proto_msgTypes[18].OneofWrappers = []any{
+		(*Backend_Static)(nil),
+		(*Backend_Ai)(nil),
+		(*Backend_Mcp)(nil),
+	}
+	file_resource_proto_msgTypes[20].OneofWrappers = []any{
+		(*AIBackend_Openai)(nil),
+		(*AIBackend_Gemini_)(nil),
+		(*AIBackend_Vertex_)(nil),
+		(*AIBackend_Anthropic_)(nil),
+		(*AIBackend_Bedrock_)(nil),
+	}
+	file_resource_proto_msgTypes[22].OneofWrappers = []any{
+		(*MCPTarget_Service)(nil),
+		(*MCPTarget_Backend)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_resource_proto_rawDesc), len(file_resource_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   18,
+			NumEnums:      2,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

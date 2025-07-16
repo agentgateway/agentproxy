@@ -14,13 +14,15 @@ use crate::http::{ext_authz, remoteratelimit};
 use crate::mcp::rbac::{RuleSet, RuleSets};
 use crate::store::Event;
 use crate::types::agent::{
-	A2aPolicy, Backend, BackendName, Bind, BindName, GatewayName, Listener, ListenerKey, ListenerSet,
-	McpAuthentication, Policy, PolicyName, PolicyTarget, Route, RouteKey, RouteName, TargetedPolicy,
+	A2aPolicy, Backend, BackendName, Bind, BindName, GatewayName, Listener, ListenerKey,
+	ListenerName, ListenerSet, McpAuthentication, Policy, PolicyName, PolicyTarget, Route, RouteKey,
+	RouteName, TargetedPolicy,
 };
 use crate::types::discovery::{NamespacedHostname, Service, Workload};
 use crate::types::proto::agent::resource::Kind as XdsKind;
 use crate::types::proto::agent::{
-	Bind as XdsBind, Listener as XdsListener, Resource as ADPResource, Route as XdsRoute,
+	Backend as XdsBackend, Bind as XdsBind, Listener as XdsListener, Resource as ADPResource,
+	Route as XdsRoute,
 };
 use crate::*;
 
@@ -32,6 +34,10 @@ pub struct Store {
 	policies_by_name: HashMap<PolicyName, Arc<TargetedPolicy>>,
 
 	backends_by_name: HashMap<BackendName, Arc<Backend>>,
+
+	// Listeners we got before a Bind arrived
+	staged_listeners: HashMap<BindName, HashMap<ListenerKey, Listener>>,
+	staged_routes: HashMap<ListenerKey, HashMap<RouteKey, Route>>,
 
 	tx: tokio::sync::broadcast::Sender<Event<Arc<Bind>>>,
 }
@@ -97,6 +103,8 @@ impl Store {
 			by_name: Default::default(),
 			policies_by_name: Default::default(),
 			backends_by_name: Default::default(),
+			staged_routes: Default::default(),
+			staged_listeners: Default::default(),
 			tx,
 		}
 	}
@@ -367,10 +375,9 @@ impl Store {
 			return;
 		};
 		let mut bind = Arc::unwrap_or_clone(bind.clone());
-		let ln = listener.key.clone();
 		let mut lis = listener.clone();
 		lis.routes.remove(&route);
-		bind.listeners.insert(ln, lis);
+		bind.listeners.insert(lis);
 		self.insert_bind(bind);
 	}
 
@@ -380,7 +387,22 @@ impl Store {
         skip_all,
         fields(bind=%bind.key),
     )]
-	pub fn insert_bind(&mut self, bind: Bind) {
+	pub fn insert_bind(&mut self, mut bind: Bind) {
+		debug!(bind=%bind.key, "insert bind");
+		// Insert any staged listeners
+		for (k, mut v) in self
+			.staged_listeners
+			.remove(&bind.key)
+			.into_iter()
+			.flatten()
+		{
+			debug!("adding staged listener {} to {}", k, bind.key);
+			for (rk, r) in self.staged_routes.remove(&k).into_iter().flatten() {
+				debug!("adding staged route {} to {}", rk, k);
+				v.routes.insert(r)
+			}
+			bind.listeners.insert(v)
+		}
 		// TODO: handle update
 		let arc = Arc::new(bind);
 		self.by_name.insert(arc.key.clone(), arc.clone());
@@ -407,40 +429,46 @@ impl Store {
 		self.policies_by_name.insert(arc.name.clone(), arc.clone());
 	}
 
-	#[instrument(
-        level = Level::INFO,
-        name="insert_listener",
-        skip_all,
-        fields(listener=%lis.name,bind=%bind_name),
-    )]
-	pub fn insert_listener(&mut self, lis: Listener, bind_name: BindName) {
+	pub fn insert_listener(&mut self, mut lis: Listener, bind_name: BindName) {
+		debug!(listener=%lis.name,bind=%bind_name, "insert listener");
+		// Insert any staged routes
+		for (k, v) in self.staged_routes.remove(&lis.key).into_iter().flatten() {
+			debug!("adding staged route {} to {}", k, lis.key);
+			lis.routes.insert(v)
+		}
 		if let Some(b) = self.by_name.get(&bind_name) {
 			let mut bind = Arc::unwrap_or_clone(b.clone());
-			bind.listeners.insert(lis.key.clone(), lis);
+			bind.listeners.insert(lis);
 			self.insert_bind(bind);
 		} else {
-			warn!("no bind found");
+			debug!("no bind found, staging");
+			self
+				.staged_listeners
+				.entry(bind_name)
+				.or_default()
+				.insert(lis.key.clone(), lis);
 		}
 	}
-	#[instrument(
-        level = Level::INFO,
-        name="insert_route",
-        skip_all,
-        fields(listener=%ln,route=%r.key),
-    )]
+
 	pub fn insert_route(&mut self, r: Route, ln: ListenerKey) {
+		debug!(listener=%ln,route=%r.key, "insert route");
 		let Some((bind, lis)) = self
 			.by_name
 			.values()
 			.find_map(|l| l.listeners.get(&ln).map(|ls| (l, ls)))
 		else {
-			warn!("no listener found");
+			debug!(listener=%ln,route=%r.key, "no listener found, staging");
+			self
+				.staged_routes
+				.entry(ln)
+				.or_default()
+				.insert(r.key.clone(), r);
 			return;
 		};
 		let mut bind = Arc::unwrap_or_clone(bind.clone());
 		let mut lis = lis.clone();
 		lis.routes.insert(r);
-		bind.listeners.insert(ln, lis);
+		bind.listeners.insert(lis);
 		self.insert_bind(bind);
 	}
 
@@ -472,6 +500,7 @@ impl Store {
 			Some(XdsKind::Bind(w)) => self.insert_xds_bind(w),
 			Some(XdsKind::Listener(w)) => self.insert_xds_listener(w),
 			Some(XdsKind::Route(w)) => self.insert_xds_route(w),
+			Some(XdsKind::Backend(w)) => self.insert_xds_backend(w),
 			_ => Err(anyhow::anyhow!("unknown resource type")),
 		}
 	}
@@ -489,6 +518,11 @@ impl Store {
 	fn insert_xds_route(&mut self, raw: XdsRoute) -> anyhow::Result<()> {
 		let (route, listener_name): (Route, ListenerKey) = (&raw).try_into()?;
 		self.insert_route(route, listener_name);
+		Ok(())
+	}
+	fn insert_xds_backend(&mut self, raw: XdsBackend) -> anyhow::Result<()> {
+		let backend: (Backend) = (&raw).try_into()?;
+		self.insert_backend(backend);
 		Ok(())
 	}
 }

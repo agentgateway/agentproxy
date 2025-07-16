@@ -114,7 +114,6 @@ impl App {
 					Arc::new(McpTarget {
 						name: t.name.clone(),
 						spec: t.spec.clone(),
-						filters: t.filters.clone(),
 						backend_policies,
 					})
 				})
@@ -210,7 +209,6 @@ impl McpBackendGroup {
 pub struct McpTarget {
 	pub name: Strng,
 	pub spec: crate::types::agent::McpTargetSpec,
-	pub filters: Vec<mcp::relay::upstream::Filter>,
 	pub backend_policies: BackendPolicies,
 }
 
