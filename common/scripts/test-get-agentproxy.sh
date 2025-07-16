@@ -116,7 +116,7 @@ test_old_version_check_would_fail() {
 
 # Test 5: Test that the new version check extracts version information
 test_new_version_check_extracts_info() {
-    run_test "New version check extracts version information"
+    run_test "New version check extracts version information and parses GitTag"
     
     export AGENTGATEWAY_INSTALL_DIR="./target/debug"
     export BINARY_NAME="agentgateway"
@@ -128,8 +128,78 @@ test_new_version_check_extracts_info() {
     if [ -n "$version_output" ] && echo "$version_output" | grep -q "version.BuildInfo"; then
         log_success "New version check successfully extracts version information"
         log_info "Version output: $version_output"
+        
+        # Test GitTag extraction
+        local git_tag
+        git_tag=$(echo "$version_output" | sed -n 's/.*GitTag:"\([^"]*\)".*/\1/p')
+        
+        if [ -n "$git_tag" ]; then
+            log_success "Successfully extracted GitTag: $git_tag"
+        else
+            log_error "Failed to extract GitTag from version output"
+            return 1
+        fi
     else
         log_error "New version check failed to extract version information. Output: $version_output"
+        return 1
+    fi
+}
+
+# Test 6: Test parsing with the exact output format provided by maintainer
+test_maintainer_provided_format() {
+    run_test "Version parsing works with maintainer's example output"
+    
+    # This is the exact output format provided by howardjohn in the PR review
+    local maintainer_example='agentgateway-app version.BuildInfo{RustVersion:"1.88.0", BuildProfile:"release", BuildStatus:"Modified", GitTag:"v0.6.0", Version:"2c7ba0d4ed47fcafa97fa411fdbf1a8ca40cf6a9-dirty", GitRevision:"2c7ba0d4ed47fcafa97fa411fdbf1a8ca40cf6a9-dirty"}'
+    
+    # Test our GitTag extraction with this exact format
+    local extracted_version
+    extracted_version=$(echo "$maintainer_example" | sed -n 's/.*GitTag:"\([^"]*\)".*/\1/p')
+    
+    if [ "$extracted_version" = "v0.6.0" ]; then
+        log_success "Successfully extracted version 'v0.6.0' from maintainer's example"
+        log_info "Extracted: $extracted_version"
+    else
+        log_error "Failed to extract correct version from maintainer's example. Got: '$extracted_version', expected: 'v0.6.0'"
+        return 1
+    fi
+    
+    # Test that our install script function would work with this format
+    # Create a mock binary that outputs the maintainer's example
+    local mock_binary_dir="./test_mock_binary"
+    mkdir -p "$mock_binary_dir"
+    
+    cat > "$mock_binary_dir/agentgateway" << 'EOF'
+#!/bin/bash
+if [ "$1" = "--version" ]; then
+    echo 'agentgateway-app version.BuildInfo{RustVersion:"1.88.0", BuildProfile:"release", BuildStatus:"Modified", GitTag:"v0.6.0", Version:"2c7ba0d4ed47fcafa97fa411fdbf1a8ca40cf6a9-dirty", GitRevision:"2c7ba0d4ed47fcafa97fa411fdbf1a8ca40cf6a9-dirty"}'
+else
+    exit 1
+fi
+EOF
+    chmod +x "$mock_binary_dir/agentgateway"
+    
+    # Source the install script functions
+    source ./common/scripts/get-agentproxy
+    
+    # Set up test environment with mock binary
+    export AGENTGATEWAY_INSTALL_DIR="$mock_binary_dir"
+    export BINARY_NAME="agentgateway"
+    export TAG="v0.6.0"  # This should match the GitTag in the mock output
+    
+    # Test the checkAgentGatewayInstalledVersion function
+    local output
+    output=$(checkAgentGatewayInstalledVersion 2>&1)
+    local result=$?
+    
+    # Clean up mock binary
+    rm -rf "$mock_binary_dir"
+    
+    if [ $result -eq 0 ] && echo "$output" | grep -q "agentgateway v0.6.0 is already"; then
+        log_success "Install script correctly handles maintainer's example format"
+        log_info "Output: $output"
+    else
+        log_error "Install script failed with maintainer's example format. Output: $output, Exit code: $result"
         return 1
     fi
 }
@@ -145,6 +215,7 @@ main() {
     test_install_script_version_check || true
     test_old_version_check_would_fail || true
     test_new_version_check_extracts_info || true
+    test_maintainer_provided_format || true
     
     # Print summary
     echo -e "\n${YELLOW}=== Test Summary ===${NC}"
