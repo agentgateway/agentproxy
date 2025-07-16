@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Rust",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/agentgateway-app",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb"
+    },
+    {
+      "name": "Debug Rust (Release)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/release/agentgateway-app",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb"
+    },
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "python": "${env:PYTHON_INTERPRETER:${workspaceFolder}/.venv/bin/python}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Python: Debug Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests",
+        "-v"
+      ],
+      "console": "integratedTerminal",
+      "python": "${env:PYTHON_INTERPRETER:${workspaceFolder}/.venv/bin/python}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Attach to Rust Process",
+      "type": "lldb",
+      "request": "attach",
+      "pid": "${command:pickProcess}",
+      "stopOnEntry": false,
+      "MIMode": "lldb"
+    }
+  ]
+}
