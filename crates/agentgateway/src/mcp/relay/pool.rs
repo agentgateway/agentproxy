@@ -245,6 +245,8 @@ impl ConnectionPool {
 						tools,  // From parse_openapi_schema
 						prefix, // From get_server_prefix
 						port: open.port,
+						forward_all_headers: open.forward_all_headers,
+						exclude_headers: open.exclude_headers.clone(),
 					})),
 				}
 			},
