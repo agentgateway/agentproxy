@@ -1260,7 +1260,9 @@ export default function PlaygroundPage() {
                         onClick={connectionState.isConnected ? disconnect : connect}
                         disabled={connectionState.isConnecting}
                         className="w-[130px]"
-                        data-cy={connectionState.isConnected ? "disconnect-button" : "connect-button"}
+                        data-cy={
+                          connectionState.isConnected ? "disconnect-button" : "connect-button"
+                        }
                       >
                         {connectionState.isConnecting ? (
                           <>

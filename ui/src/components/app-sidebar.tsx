@@ -120,7 +120,9 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                 >
                   <Headphones className="h-4 w-4" />
                   <span>Listeners</span>
-                  <SidebarMenuBadge data-cy="nav-badge-listeners">{listeners.length}</SidebarMenuBadge>
+                  <SidebarMenuBadge data-cy="nav-badge-listeners">
+                    {listeners.length}
+                  </SidebarMenuBadge>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -193,7 +195,11 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Toggle Theme" aria-label="Toggle Theme" data-cy="theme-toggle">
+            <SidebarMenuButton
+              tooltip="Toggle Theme"
+              aria-label="Toggle Theme"
+              data-cy="theme-toggle"
+            >
               <ThemeToggle asChild />
             </SidebarMenuButton>
           </SidebarMenuItem>

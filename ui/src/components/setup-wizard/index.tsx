@@ -80,7 +80,10 @@ export function SetupWizard({ config, onConfigChange, onComplete, onSkip }: Setu
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-muted/30" data-cy="setup-wizard-container">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-muted/30"
+      data-cy="setup-wizard-container"
+    >
       <div className="w-full max-w-4xl px-4">
         {renderStep()}
 
