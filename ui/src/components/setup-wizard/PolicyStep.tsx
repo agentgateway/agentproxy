@@ -119,7 +119,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
   };
 
   return (
-    <Card className="w-full max-w-3xl">
+    <Card className="w-full max-w-3xl" data-cy="wizard-policy-step">
       <CardHeader>
         <div className="flex justify-center mb-6">
           <AgentgatewayLogo className="h-12" />
@@ -150,6 +150,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-jwt"
                   checked={enableJwt}
                   onCheckedChange={(checked: boolean) => setEnableJwt(checked)}
+                  data-cy="policy-jwt-enable"
                 />
                 <Label htmlFor="enable-jwt" className="flex items-center gap-2 font-medium">
                   <Key className="h-4 w-4" />
@@ -197,6 +198,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-cors"
                   checked={enableCors}
                   onCheckedChange={(checked: boolean) => setEnableCors(checked)}
+                  data-cy="policy-cors-enable"
                 />
                 <Label htmlFor="enable-cors" className="flex items-center gap-2 font-medium">
                   <Globe className="h-4 w-4" />
@@ -252,6 +254,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-timeout"
                   checked={enableTimeout}
                   onCheckedChange={(checked: boolean) => setEnableTimeout(checked)}
+                  data-cy="policy-timeout-enable"
                 />
                 <Label htmlFor="enable-timeout" className="flex items-center gap-2 font-medium">
                   <Clock className="h-4 w-4" />
@@ -316,11 +319,11 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
+        <Button variant="outline" onClick={onPrevious} data-cy="wizard-policy-previous">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        <Button onClick={handleNext} disabled={isUpdating}>
+        <Button onClick={handleNext} disabled={isUpdating} data-cy="wizard-policy-next">
           {isUpdating ? "Configuring..." : "Next"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
