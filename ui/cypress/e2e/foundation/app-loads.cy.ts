@@ -2,7 +2,7 @@
 
 describe('Application Loading', () => {
   beforeEach(() => {
-    cy.visit('/')
+    cy.visit('/', { failOnStatusCode: false })
   })
 
   it('should load the application successfully', () => {

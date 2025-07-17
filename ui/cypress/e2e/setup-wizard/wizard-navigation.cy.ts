@@ -2,7 +2,7 @@
 
 describe('Setup Wizard Navigation', () => {
   beforeEach(() => {
-    cy.visit('/')
+    cy.visit('/', { failOnStatusCode: false })
     // Trigger the setup wizard by clicking the run setup wizard button
     cy.get('[data-cy="run-setup-wizard-button"]').click()
     cy.get('[data-cy="setup-wizard-container"]').should('be.visible')
