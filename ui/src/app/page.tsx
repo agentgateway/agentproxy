@@ -190,7 +190,7 @@ export default function Home() {
 
   const renderContent = () => {
     if (isLoading) {
-      return <LoadingState />;
+      return <LoadingState data-cy="dashboard-loading" />;
     }
     if (showWizard) {
       return (
@@ -218,13 +218,13 @@ export default function Home() {
               Get started by configuring your first port bind and listener to begin routing traffic.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild>
+              <Button asChild data-cy="create-first-listener-button">
                 <Link href="/listeners">
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Listener
                 </Link>
               </Button>
-              <Button variant="outline" onClick={handleRestartWizard}>
+              <Button variant="outline" onClick={handleRestartWizard} data-cy="run-setup-wizard-button">
                 <Settings className="h-4 w-4 mr-2" />
                 Run Setup Wizard
               </Button>
@@ -235,7 +235,7 @@ export default function Home() {
     }
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-8" data-cy="dashboard-content">
         {/* Configuration Health Alert */}
         {(healthCheck.issues.length > 0 || healthCheck.warnings.length > 0) && (
           <div className="space-y-2">
@@ -256,13 +256,13 @@ export default function Home() {
 
         {/* Main Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="@container/card">
+          <Card className="@container/card" data-cy="dashboard-statistics-card">
             <CardHeader>
               <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wider font-medium text-muted-foreground/80">
                 <Network className="h-4 w-4 text-blue-500" />
                 Port Binds
               </CardDescription>
-              <CardTitle className="text-3xl font-semibold mt-2">{binds?.length || 0}</CardTitle>
+              <CardTitle className="text-3xl font-semibold mt-2" data-cy="dashboard-binds-count">{binds?.length || 0}</CardTitle>
               <Link
                 href="/listeners"
                 className="mt-3 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
@@ -273,13 +273,13 @@ export default function Home() {
             </CardHeader>
           </Card>
 
-          <Card className="@container/card">
+          <Card className="@container/card" data-cy="dashboard-statistics-card">
             <CardHeader>
               <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wider font-medium text-muted-foreground/80">
                 <Server className="h-4 w-4 text-green-500" />
                 Listeners
               </CardDescription>
-              <CardTitle className="text-3xl font-semibold mt-2">{getTotalListeners()}</CardTitle>
+              <CardTitle className="text-3xl font-semibold mt-2" data-cy="dashboard-listeners-count">{getTotalListeners()}</CardTitle>
               <Link
                 href="/listeners"
                 className="mt-3 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
@@ -290,13 +290,13 @@ export default function Home() {
             </CardHeader>
           </Card>
 
-          <Card className="@container/card">
+          <Card className="@container/card" data-cy="dashboard-statistics-card">
             <CardHeader>
               <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wider font-medium text-muted-foreground/80">
                 <Route className="h-4 w-4 text-orange-500" />
                 Routes
               </CardDescription>
-              <CardTitle className="text-3xl font-semibold mt-2">{getTotalRoutes()}</CardTitle>
+              <CardTitle className="text-3xl font-semibold mt-2" data-cy="dashboard-routes-count">{getTotalRoutes()}</CardTitle>
               <Link
                 href="/routes"
                 className="mt-3 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
@@ -307,13 +307,13 @@ export default function Home() {
             </CardHeader>
           </Card>
 
-          <Card className="@container/card">
+          <Card className="@container/card" data-cy="dashboard-statistics-card">
             <CardHeader>
               <CardDescription className="flex items-center gap-2 text-xs uppercase tracking-wider font-medium text-muted-foreground/80">
                 <Database className="h-4 w-4 text-purple-500" />
                 Backends
               </CardDescription>
-              <CardTitle className="text-3xl font-semibold mt-2">{getTotalBackends()}</CardTitle>
+              <CardTitle className="text-3xl font-semibold mt-2" data-cy="dashboard-backends-count">{getTotalBackends()}</CardTitle>
               <Link
                 href="/backends"
                 className="mt-3 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"

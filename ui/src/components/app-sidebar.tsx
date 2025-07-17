@@ -104,6 +104,7 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/"}
                   onClick={() => navigateTo("/")}
                   aria-label="Home"
+                  data-cy="nav-home"
                 >
                   <Home className="h-4 w-4" />
                   <span>Home</span>
@@ -115,10 +116,11 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/listeners"}
                   onClick={() => navigateTo("/listeners")}
                   aria-label="Port Binds & Listeners"
+                  data-cy="nav-listeners"
                 >
                   <Headphones className="h-4 w-4" />
                   <span>Listeners</span>
-                  <SidebarMenuBadge>{listeners.length}</SidebarMenuBadge>
+                  <SidebarMenuBadge data-cy="nav-badge-listeners">{listeners.length}</SidebarMenuBadge>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -127,10 +129,11 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/routes"}
                   onClick={() => navigateTo("/routes")}
                   aria-label="Routes"
+                  data-cy="nav-routes"
                 >
                   <Route className="h-4 w-4" />
                   <span>Routes</span>
-                  <SidebarMenuBadge>{routeCount}</SidebarMenuBadge>
+                  <SidebarMenuBadge data-cy="nav-badge-routes">{routeCount}</SidebarMenuBadge>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -139,10 +142,11 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/backends"}
                   onClick={() => navigateTo("/backends")}
                   aria-label="Backends"
+                  data-cy="nav-backends"
                 >
                   <Server className="h-4 w-4" />
                   <span>Backends</span>
-                  <SidebarMenuBadge>{backendCount}</SidebarMenuBadge>
+                  <SidebarMenuBadge data-cy="nav-badge-backends">{backendCount}</SidebarMenuBadge>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -151,6 +155,7 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/policies"}
                   onClick={() => navigateTo("/policies")}
                   aria-label="Policies"
+                  data-cy="nav-policies"
                 >
                   <Shield className="h-4 w-4" />
                   <span>Policies</span>
@@ -162,6 +167,7 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
                   isActive={pathname === "/playground"}
                   onClick={() => navigateTo("/playground")}
                   aria-label="Playground"
+                  data-cy="nav-playground"
                 >
                   <Code className="h-4 w-4" />
                   <span>Playground</span>
@@ -180,13 +186,14 @@ export function AppSidebar({ setActiveView }: AppSidebarProps) {
               tooltip="Restart Setup Wizard"
               onClick={handleRestartWizard}
               aria-label="Restart Setup Wizard"
+              data-cy="restart-setup-button"
             >
               <Settings className="h-4 w-4" />
               <span>Restart Setup</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Toggle Theme" aria-label="Toggle Theme">
+            <SidebarMenuButton tooltip="Toggle Theme" aria-label="Toggle Theme" data-cy="theme-toggle">
               <ThemeToggle asChild />
             </SidebarMenuButton>
           </SidebarMenuItem>

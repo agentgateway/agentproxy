@@ -9,7 +9,12 @@
     "build": "npm run lint -- --fix && next build",
     "start": "next start",
     "lint": "next lint",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:run:headless": "cypress run --headless",
+    "e2e": "cypress run",
+    "e2e:open": "cypress open"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
