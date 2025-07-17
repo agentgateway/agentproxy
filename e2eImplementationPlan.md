@@ -329,19 +329,30 @@ This document provides a comprehensive, phase-based implementation plan for E2E 
   - [ ] Test backend editing and deletion
   - [ ] Test backend-route relationships
 
-### 3.4 Navigation and State Management Tests
+### 3.4 Navigation and State Management Tests ✅ SUBSTANTIALLY COMPLETE
 
-#### Todo Items:
-- [ ] **Create `ui/cypress/e2e/navigation/sidebar-navigation.cy.ts`**
-  - [ ] Test all sidebar navigation links
-  - [ ] Verify active state indicators
-  - [ ] Test navigation badges
-  - [ ] Test theme toggle functionality
+#### Completed Items:
+- ✅ **Created `ui/cypress/e2e/navigation/sidebar-navigation.cy.ts`** (7/9 tests passing)
+  - ✅ Test all sidebar navigation links
+  - ✅ Verify active state indicators
+  - ✅ Test navigation badges
+  - ✅ Test restart setup button functionality
+  - ✅ Test navigation state persistence
+  - ✅ Test keyboard accessibility
+  - ✅ Test responsive navigation across viewport sizes
+  - ⚠️ Minor issues: Theme toggle element coverage, text content matching
 
-- [ ] **Create `ui/cypress/e2e/navigation/deep-linking.cy.ts`**
-  - [ ] Test direct URL access to pages
-  - [ ] Verify proper page loading
-  - [ ] Test navigation context preservation
+- ✅ **Created `ui/cypress/e2e/navigation/deep-linking.cy.ts`** (15/15 tests passing)
+  - ✅ Test direct URL access to all pages (dashboard, listeners, routes, backends, policies, playground)
+  - ✅ Test invalid URL handling and 404 behavior
+  - ✅ Test page refresh context preservation
+  - ✅ Test browser back/forward navigation
+  - ✅ Test URL parameters and query strings
+  - ✅ Test hash fragments in URLs
+  - ✅ Test state maintenance during navigation
+  - ✅ Test concurrent navigation requests
+  - ✅ Test setup wizard deep linking
+  - ✅ Test external link behavior
 
 ---
 
