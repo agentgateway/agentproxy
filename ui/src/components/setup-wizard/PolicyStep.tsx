@@ -167,6 +167,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtIssuer}
                       onChange={(e) => setJwtIssuer(e.target.value)}
                       placeholder="https://your-auth-provider.com/"
+                      data-cy="policy-jwt-issuer-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -176,6 +177,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtAudiences}
                       onChange={(e) => setJwtAudiences(e.target.value)}
                       placeholder="your-api,another-audience"
+                      data-cy="policy-jwt-audiences-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -185,6 +187,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtJwks}
                       onChange={(e) => setJwtJwks(e.target.value)}
                       placeholder="https://your-auth-provider.com/.well-known/jwks.json"
+                      data-cy="policy-jwt-jwks-input"
                     />
                   </div>
                 </div>
@@ -215,6 +218,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsOrigins}
                       onChange={(e) => setCorsOrigins(e.target.value)}
                       placeholder="*"
+                      data-cy="policy-cors-origins-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -224,6 +228,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsMethods}
                       onChange={(e) => setCorsMethods(e.target.value)}
                       placeholder="GET,POST,PUT,DELETE,OPTIONS"
+                      data-cy="policy-cors-methods-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -233,6 +238,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsHeaders}
                       onChange={(e) => setCorsHeaders(e.target.value)}
                       placeholder="Content-Type,Authorization"
+                      data-cy="policy-cors-headers-input"
                     />
                   </div>
                   <div className="flex items-center space-x-2">
@@ -240,6 +246,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       id="cors-credentials"
                       checked={corsCredentials}
                       onCheckedChange={(checked: boolean) => setCorsCredentials(checked)}
+                      data-cy="policy-cors-credentials-checkbox"
                     />
                     <Label htmlFor="cors-credentials">Allow Credentials</Label>
                   </div>
@@ -271,6 +278,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={requestTimeout}
                       onChange={(e) => setRequestTimeout(e.target.value)}
                       placeholder="30s"
+                      data-cy="policy-timeout-request-input"
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum time to wait for a request (e.g., 30s, 1m)
@@ -283,6 +291,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={backendTimeout}
                       onChange={(e) => setBackendTimeout(e.target.value)}
                       placeholder="15s"
+                      data-cy="policy-timeout-backend-input"
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum time to wait for backend response

@@ -495,7 +495,7 @@ export function ListenerConfig({
                               <TableRow
                                 key={listener.name || listenerIndex}
                                 className="hover:bg-muted/30"
-                                data-cy={`listener-row-${listener.name || `unnamed-${listenerIndex}`}`}
+                                data-cy={`listener-card-${listener.name || `unnamed-${listenerIndex}`}`}
                               >
                                 <TableCell className="font-medium">
                                   <div className="flex items-center space-x-2">

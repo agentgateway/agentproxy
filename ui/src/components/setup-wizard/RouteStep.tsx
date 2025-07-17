@@ -163,7 +163,7 @@ export function RouteStep({ onNext, onPrevious, config, onConfigChange }: RouteS
                 value={pathType}
                 onValueChange={(value) => setPathType(value as "exact" | "prefix" | "regex")}
                 className="grid grid-cols-3 gap-4"
-                data-cy="route-path-type-select"
+                data-cy="route-match-type-select"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="exact" id="exact-match" />
@@ -217,8 +217,9 @@ export function RouteStep({ onNext, onPrevious, config, onConfigChange }: RouteS
                   onChange={(e) => setNewHostname(e.target.value)}
                   placeholder="e.g., api.example.com or *"
                   onKeyPress={(e) => e.key === "Enter" && addHostname()}
+                  data-cy="route-hostname-input"
                 />
-                <Button type="button" variant="outline" onClick={addHostname}>
+                <Button type="button" variant="outline" onClick={addHostname} data-cy="route-add-hostname-button">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -243,8 +244,9 @@ export function RouteStep({ onNext, onPrevious, config, onConfigChange }: RouteS
                   onChange={(e) => setNewMethod(e.target.value)}
                   placeholder="Enter HTTP method"
                   onKeyPress={(e) => e.key === "Enter" && addMethod()}
+                  data-cy="route-method-input"
                 />
-                <Button type="button" variant="outline" onClick={addMethod}>
+                <Button type="button" variant="outline" onClick={addMethod} data-cy="route-add-method-button">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>

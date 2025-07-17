@@ -198,6 +198,7 @@ export function BackendStep({ onNext, onPrevious, config, onConfigChange }: Back
               value={targetType}
               onValueChange={(value) => setTargetType(value as "mcp" | "stdio" | "sse" | "openapi")}
               className="grid grid-cols-2 gap-4"
+              data-cy="backend-target-type-select"
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="mcp" id="mcp-target" />
@@ -225,6 +226,7 @@ export function BackendStep({ onNext, onPrevious, config, onConfigChange }: Back
               value={targetName}
               onChange={(e) => setTargetName(e.target.value)}
               placeholder="e.g., default-target"
+              data-cy="backend-target-name-input"
             />
           </div>
 
