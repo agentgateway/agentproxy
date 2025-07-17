@@ -13,7 +13,10 @@ describe('Application Loading', () => {
     cy.checkNavigation()
     
     // Verify dashboard statistics cards are present
-    cy.get('[data-cy="dashboard-statistics-card"]').should('have.length.at.least', 1)
+    cy.get('[data-cy="dashboard-listeners-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-routes-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-backends-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-binds-card"]').should('be.visible')
     
     // Check that getting started buttons are present when no config exists
     cy.get('[data-cy="create-first-listener-button"]').should('be.visible')
@@ -55,7 +58,12 @@ describe('Application Loading', () => {
 
   it('should display dashboard statistics', () => {
     cy.get('[data-cy="dashboard-content"]').should('be.visible')
-    cy.get('[data-cy="dashboard-statistics-card"]').should('have.length.at.least', 1)
+    
+    // Verify all dashboard cards are present
+    cy.get('[data-cy="dashboard-listeners-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-routes-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-backends-card"]').should('be.visible')
+    cy.get('[data-cy="dashboard-binds-card"]').should('be.visible')
     
     // Check individual count displays
     cy.get('[data-cy="dashboard-binds-count"]').should('be.visible')
