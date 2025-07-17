@@ -391,7 +391,7 @@ export function ListenerConfig({
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        <Button onClick={() => setIsAddingBind(true)} variant="outline">
+        <Button onClick={() => setIsAddingBind(true)} variant="outline" data-cy="add-bind-button">
           <Plus className="mr-2 h-4 w-4" />
           Add Bind
         </Button>
