@@ -119,7 +119,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
   };
 
   return (
-    <Card className="w-full max-w-3xl">
+    <Card className="w-full max-w-3xl" data-cy="wizard-policy-step">
       <CardHeader>
         <div className="flex justify-center mb-6">
           <AgentgatewayLogo className="h-12" />
@@ -150,6 +150,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-jwt"
                   checked={enableJwt}
                   onCheckedChange={(checked: boolean) => setEnableJwt(checked)}
+                  data-cy="policy-jwt-enable"
                 />
                 <Label htmlFor="enable-jwt" className="flex items-center gap-2 font-medium">
                   <Key className="h-4 w-4" />
@@ -166,6 +167,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtIssuer}
                       onChange={(e) => setJwtIssuer(e.target.value)}
                       placeholder="https://your-auth-provider.com/"
+                      data-cy="policy-jwt-issuer-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -175,6 +177,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtAudiences}
                       onChange={(e) => setJwtAudiences(e.target.value)}
                       placeholder="your-api,another-audience"
+                      data-cy="policy-jwt-audiences-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -184,6 +187,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={jwtJwks}
                       onChange={(e) => setJwtJwks(e.target.value)}
                       placeholder="https://your-auth-provider.com/.well-known/jwks.json"
+                      data-cy="policy-jwt-jwks-input"
                     />
                   </div>
                 </div>
@@ -197,6 +201,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-cors"
                   checked={enableCors}
                   onCheckedChange={(checked: boolean) => setEnableCors(checked)}
+                  data-cy="policy-cors-enable"
                 />
                 <Label htmlFor="enable-cors" className="flex items-center gap-2 font-medium">
                   <Globe className="h-4 w-4" />
@@ -213,6 +218,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsOrigins}
                       onChange={(e) => setCorsOrigins(e.target.value)}
                       placeholder="*"
+                      data-cy="policy-cors-origins-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -222,6 +228,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsMethods}
                       onChange={(e) => setCorsMethods(e.target.value)}
                       placeholder="GET,POST,PUT,DELETE,OPTIONS"
+                      data-cy="policy-cors-methods-input"
                     />
                   </div>
                   <div className="space-y-3">
@@ -231,6 +238,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={corsHeaders}
                       onChange={(e) => setCorsHeaders(e.target.value)}
                       placeholder="Content-Type,Authorization"
+                      data-cy="policy-cors-headers-input"
                     />
                   </div>
                   <div className="flex items-center space-x-2">
@@ -238,6 +246,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       id="cors-credentials"
                       checked={corsCredentials}
                       onCheckedChange={(checked: boolean) => setCorsCredentials(checked)}
+                      data-cy="policy-cors-credentials-checkbox"
                     />
                     <Label htmlFor="cors-credentials">Allow Credentials</Label>
                   </div>
@@ -252,6 +261,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                   id="enable-timeout"
                   checked={enableTimeout}
                   onCheckedChange={(checked: boolean) => setEnableTimeout(checked)}
+                  data-cy="policy-timeout-enable"
                 />
                 <Label htmlFor="enable-timeout" className="flex items-center gap-2 font-medium">
                   <Clock className="h-4 w-4" />
@@ -268,6 +278,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={requestTimeout}
                       onChange={(e) => setRequestTimeout(e.target.value)}
                       placeholder="30s"
+                      data-cy="policy-timeout-request-input"
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum time to wait for a request (e.g., 30s, 1m)
@@ -280,6 +291,7 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
                       value={backendTimeout}
                       onChange={(e) => setBackendTimeout(e.target.value)}
                       placeholder="15s"
+                      data-cy="policy-timeout-backend-input"
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum time to wait for backend response
@@ -316,11 +328,11 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
+        <Button variant="outline" onClick={onPrevious} data-cy="wizard-policy-previous">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        <Button onClick={handleNext} disabled={isUpdating}>
+        <Button onClick={handleNext} disabled={isUpdating} data-cy="wizard-policy-next">
           {isUpdating ? "Configuring..." : "Next"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
