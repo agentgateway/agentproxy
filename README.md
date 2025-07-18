@@ -35,9 +35,13 @@
 <div align="center">
   <img alt="agentgateway UI" src="img/architecture.svg" width="600">
 </div>
-<br> 
+<br>
 
-**Key Features:**
+# Intro to Agentgateway Video
+
+[![Agentgateway Intro Video](https://img.youtube.com/vi/SomP92JWPmE/hqdefault.jpg)](https://youtu.be/SomP92JWPmE)
+
+## Key Features:
 
 - [x] **Highly performant:** agentgateway is written in rust, and is designed from the ground up to handle any scale you can throw at it.
 - [x] **Security First:** agentgateway includes a robust MCP/A2A focused RBAC system.
