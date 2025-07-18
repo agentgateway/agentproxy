@@ -22,6 +22,7 @@ use control::caclient::CaClient;
 
 pub mod a2a;
 pub mod app;
+pub mod auth;
 pub mod cel;
 pub mod client;
 pub mod config;
@@ -76,6 +77,12 @@ pub struct RawConfig {
 	// Admin UI address in the format "ip:port"
 	admin_addr: Option<String>,
 
+	// Stats/metrics address in the format "ip:port"
+	stats_addr: Option<Address>,
+
+	// Readiness/health check address in the format "ip:port"
+	readiness_addr: Option<Address>,
+
 	auth_token: Option<String>,
 
 	connection_termination_deadline: Option<Duration>,
@@ -87,6 +94,7 @@ pub struct RawConfig {
 	logging: Option<RawLogging>,
 
 	http2: Option<RawHTTP2>,
+	auth: Option<crate::auth::AuthConfig>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -167,6 +175,7 @@ pub struct Config {
 	pub logging: crate::telemetry::log::Config,
 	pub dns: client::Config,
 	pub proxy_metadata: ProxyMetadata,
+	pub auth: crate::auth::AuthConfig,
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -233,7 +242,7 @@ pub struct ProxyInputs {
 	ca: Option<Arc<CaClient>>,
 }
 
-#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 // Address is a wrapper around either a normal SocketAddr or "bind to localhost on IPv4 and IPv6"
 pub enum Address {
 	// Bind to localhost (dual stack) on a specific port

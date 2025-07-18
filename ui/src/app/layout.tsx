@@ -5,10 +5,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { LoadingWrapper } from "@/components/loading-wrapper";
 import { Toaster } from "@/components/ui/sonner";
 import { ServerProvider } from "@/lib/server-context";
+import { AuthProvider } from "@/lib/auth-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { WizardProvider } from "@/lib/wizard-context";
 import { ConfigErrorWrapper } from "@/components/config-error-wrapper";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,27 +41,31 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
       >
         <ServerProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-            storageKey="agentgateway-theme"
-          >
-            <LoadingWrapper>
-              <WizardProvider>
-                <ConfigErrorWrapper>
-                  <SidebarProvider>
-                    <div className="flex min-h-screen w-full">
-                      <SidebarWrapper />
-                      <main className="flex-1 overflow-auto">{children}</main>
-                    </div>
-                  </SidebarProvider>
-                  <Toaster richColors />
-                </ConfigErrorWrapper>
-              </WizardProvider>
-            </LoadingWrapper>
-          </ThemeProvider>
+          <AuthProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              storageKey="agentgateway-theme"
+            >
+              <LoadingWrapper>
+                <WizardProvider>
+                  <ConfigErrorWrapper>
+                    <ProtectedRoute>
+                      <SidebarProvider>
+                        <div className="flex min-h-screen w-full">
+                          <SidebarWrapper />
+                          <main className="flex-1 overflow-auto">{children}</main>
+                        </div>
+                      </SidebarProvider>
+                    </ProtectedRoute>
+                    <Toaster richColors />
+                  </ConfigErrorWrapper>
+                </WizardProvider>
+              </LoadingWrapper>
+            </ThemeProvider>
+          </AuthProvider>
         </ServerProvider>
       </body>
     </html>

@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=../../schema/local.json
+# Example configuration with authentication enabled
+auth:
+  enabled: true
+  session:
+    secret: "your-session-secret-key-here-change-this-in-production"
+    duration: "24h"
+    refresh_threshold: "1h"
+    secure: false  # Set to true in production with HTTPS
+    same_site: "lax"
+  
+  # Default admin user (change password in production)
+  admin:
+    username: "admin"
+    password: "password123"
+    email: "admin@example.com"
+  
+  # User authentication providers
+  providers:
+    file:
+      enabled: true
+      path: "./users.yaml"
+    # Database provider (uncomment to use)
+    # database:
+    #   enabled: true
+    #   url: "postgresql://user:password@localhost/agentgateway"
+    #   table: "users"
+  
+  # OAuth2 providers (optional)
+  oauth2:
+    providers:
+      google:
+        enabled: false
+        client_id: "your-google-client-id"
+        client_secret: "your-google-client-secret"
+        scopes: ["openid", "profile", "email"]
+        redirect_uri: "http://localhost:3000/auth/oauth2/google/callback"
+      github:
+        enabled: false
+        client_id: "your-github-client-id"
+        client_secret: "your-github-client-secret"
+        scopes: ["user:email"]
+        redirect_uri: "http://localhost:3000/auth/oauth2/github/callback"
+  
+  # Security settings
+  security:
+    csrf_protection: true
+    rate_limiting:
+      enabled: true
+      max_requests: 100
+      window_seconds: 60
+    password_policy:
+      min_length: 8
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special: false
+
+# UI configuration
+ui:
+  enabled: true
+  port: 3000
+  static_path: "./ui/dist"
+
+# Gateway configuration
+binds:
+- port: 3001
+  listeners:
+  - routes:
+    - policies:
+        cors:
+          allowOrigins:
+            - "http://localhost:3000"
+          allowHeaders:
+            - mcp-protocol-version
+            - content-type
+            - authorization
+      backends:
+      - mcp:
+          name: default
+          targets:
+          - name: everything
+            stdio:
+              cmd: npx
+              args: ["@modelcontextprotocol/server-everything"]

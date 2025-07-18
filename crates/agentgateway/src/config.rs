@@ -11,6 +11,7 @@ use hickory_resolver::config::ResolveHosts;
 use crate::control::caclient;
 use crate::telemetry::trc;
 use crate::types::discovery::Identity;
+use crate::auth::AuthConfig;
 use crate::{
 	Address, Config, ConfigSource, NestedRawConfig, RawConfig, XDSConfig, cel, client, serdes,
 	telemetry,
@@ -155,11 +156,22 @@ pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Resu
 		.transpose()?
 		.unwrap_or(Address::Localhost(ipv6_localhost_enabled, 15000));
 
+	let stats_addr = parse::<String>("STATS_ADDR")?
+		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
+		.transpose()?
+		.or(raw.stats_addr)
+		.unwrap_or(Address::SocketAddr(SocketAddr::new(bind_wildcard, 15020)));
+	let readiness_addr = parse::<String>("READINESS_ADDR")?
+		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
+		.transpose()?
+		.or(raw.readiness_addr)
+		.unwrap_or(Address::SocketAddr(SocketAddr::new(bind_wildcard, 15021)));
+
 	Ok(crate::Config {
 		network: network.into(),
 		admin_addr,
-		stats_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15020)),
-		readiness_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15021)),
+		stats_addr,
+		readiness_addr,
 		self_addr,
 		xds,
 		ca,
@@ -246,6 +258,7 @@ pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Resu
 				)
 				.unwrap_or(Duration::from_secs(60 * 5)),
 		}),
+		auth: raw.auth.unwrap_or_default(),
 	})
 }
 

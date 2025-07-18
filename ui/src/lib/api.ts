@@ -2,6 +2,117 @@ import { Target, Listener, LocalConfig, Bind, Backend, Route } from "./types";
 
 const API_URL = process.env.NODE_ENV === "production" ? "" : "http://localhost:15000";
 
+// Authentication API functions
+export interface LoginRequest {
+  username: string;
+  password: string;
+  csrf_token?: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  csrf_token?: string;
+  redirect_url?: string;
+}
+
+export interface UserInfo {
+  username: string;
+  email?: string;
+  roles: string[];
+  auth_method: 'Traditional' | { OAuth2: { provider: string } };
+  csrf_token: string;
+}
+
+export interface OAuth2Provider {
+  name: string;
+  display_name: string;
+  auth_url: string;
+}
+
+export interface OAuth2ProvidersResponse {
+  providers: OAuth2Provider[];
+}
+
+/**
+ * Login with username and password
+ */
+export async function login(loginData: LoginRequest): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(loginData),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Logout the current user
+ */
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Logout failed: ${response.status} ${response.statusText}`);
+  }
+}
+
+/**
+ * Get current user information
+ */
+export async function getCurrentUser(): Promise<UserInfo> {
+  const response = await fetch(`${API_URL}/auth/user`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Not authenticated');
+    }
+    throw new Error(`Failed to get user info: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get available OAuth2 providers
+ */
+export async function getOAuth2Providers(): Promise<OAuth2ProvidersResponse> {
+  const response = await fetch(`${API_URL}/auth/oauth2/providers`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get OAuth2 providers: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Check authentication status
+ */
+export async function checkAuthStatus(): Promise<boolean> {
+  try {
+    await getCurrentUser();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 /**
  * Fetches the full configuration from the agentgateway server
  */

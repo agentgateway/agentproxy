@@ -1,0 +1,26 @@
+# Sample users file for file-based authentication
+# Passwords are hashed using bcrypt
+users:
+  - username: "admin"
+    password: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/1YsQxSWW6"  # password: admin123
+    email: "admin@example.com"
+    roles: ["admin", "user"]
+    auth_method: "Traditional"
+
+  - username: "user"
+    password: "$2b$12$vI7rF1lLNz5zPzJyqCzQjuHmVeIhJ4ZcJGdBpKFJLyTfV0LwKgYWy"  # password: user123
+    email: "user@example.com"
+    roles: ["user"]
+    auth_method: "Traditional"
+
+  - username: "developer"
+    password: "$2b$12$qCVxJ1xRMm2oHtKpJEVgz.hEjhXCJJCzQS8dZxlHgvOzJQeTGVYuG"  # password: dev123
+    email: "developer@example.com"
+    roles: ["developer", "user"]
+    auth_method: "Traditional"
+
+  - username: "readonly"
+    password: "$2b$12$YSjL2LQNzFsZyIoOF7L3/.2F5OTqAKhYzPqOOgSWUJWKaJqShPjZe"  # password: readonly123
+    email: "readonly@example.com"
+    roles: ["readonly"]
+    auth_method: "Traditional"

@@ -3,11 +3,15 @@ use std::time::Duration;
 
 use crate::management::admin::{AdminFallback, AdminResponse, ConfigDumpHandler};
 use crate::{Config, ConfigSource, client, yamlviajson};
+use crate::auth::{AuthService, auth_middleware, handle_login_page, handle_login_submit, handle_logout,
+				handle_oauth2_providers, handle_oauth2_login, handle_oauth2_callback, handle_user_info,
+				handle_health_check};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use axum::middleware::from_fn_with_state;
 use http::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
 use http::{HeaderName, HeaderValue, Method};
 use hyper::body::Incoming;
@@ -17,6 +21,7 @@ use serde_json::Value;
 use tower::ServiceExt;
 use tower_http::cors::CorsLayer;
 use tower_serve_static::ServeDir;
+use tower_cookies::CookieManagerLayer;
 pub struct UiHandler {
 	router: Router,
 }
@@ -25,6 +30,7 @@ pub struct UiHandler {
 struct App {
 	state: Arc<Config>,
 	client: client::Client,
+	auth_service: Option<Arc<AuthService>>,
 }
 
 impl App {
@@ -43,18 +49,59 @@ lazy_static::lazy_static! {
 }
 
 impl UiHandler {
-	pub fn new(cfg: Arc<Config>) -> Self {
+	pub async fn new(cfg: Arc<Config>) -> Self {
 		let ui_service = ServeDir::new(&ASSETS_DIR);
-		let router = Router::new()
-			// Redirect to the UI
+		let client = client::Client::new(&cfg.dns, None);
+		
+		// Initialize auth service if enabled
+		let auth_service = if cfg.auth.enabled {
+			match AuthService::new(cfg.auth.clone(), client.clone()).await {
+				Ok(service) => Some(Arc::new(service)),
+				Err(e) => {
+					tracing::error!("Failed to initialize auth service: {}", e);
+					None
+				}
+			}
+		} else {
+			None
+		};
+		
+		let app_state = App {
+			state: cfg.clone(),
+			client: client.clone(),
+			auth_service: auth_service.clone(),
+		};
+		
+		let mut router = Router::new()
+			// Health check endpoint (no auth required)
+			.route("/auth/health", get(handle_health_check))
+			// Config endpoints
 			.route("/config", get(get_config).post(write_config))
 			.nest_service("/ui", ui_service)
 			.route("/", get(|| async { Redirect::permanent("/ui") }))
 			.layer(add_cors_layer())
-			.with_state(App {
-				state: cfg.clone(),
-				client: client::Client::new(&cfg.dns, None),
-			});
+			.with_state(app_state);
+		
+		// Add authentication routes if enabled
+		if let Some(auth_service) = auth_service {
+			router = router
+				// Authentication pages
+				.route("/auth/login", get(handle_login_page))
+				.route("/auth/login", post(handle_login_submit))
+				.route("/auth/logout", get(handle_logout).post(handle_logout))
+				// OAuth2 endpoints
+				.route("/auth/oauth2/providers", get(handle_oauth2_providers))
+				.route("/auth/oauth2/:provider/login", get(handle_oauth2_login))
+				.route("/auth/oauth2/:provider/callback", get(handle_oauth2_callback))
+				// User info endpoint
+				.route("/auth/user", get(handle_user_info))
+				// Cookie management layer
+				.layer(CookieManagerLayer::new())
+				// Authentication middleware for protected routes
+				.layer(from_fn_with_state(auth_service.clone(), auth_middleware))
+				.with_state(auth_service);
+		}
+		
 		Self { router }
 	}
 }
