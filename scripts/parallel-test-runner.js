@@ -20,7 +20,7 @@ const WorkerManager = require('./lib/worker-manager');
 class ParallelTestRunner {
   constructor(options = {}) {
     this.options = {
-      baseDir: options.baseDir || 'ui',
+      baseDir: options.baseDir || '.',
       maxWorkers: options.maxWorkers || null, // Auto-detect if null
       memoryLimit: options.memoryLimit || 85, // Percentage
       diskSpaceBuffer: options.diskSpaceBuffer || 100 * 1024 * 1024, // 100MB

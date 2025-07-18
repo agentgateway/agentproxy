@@ -13,7 +13,7 @@ const fs = require('fs').promises;
  */
 class WorkerManager {
   constructor(options = {}) {
-    this.baseDir = options.baseDir || 'ui';
+    this.baseDir = options.baseDir || '.';
     this.cypressCommand = options.cypressCommand || 'npx cypress run';
     this.maxWorkers = options.maxWorkers || 8;
     this.workerTimeout = options.workerTimeout || 300000; // 5 minutes
@@ -77,7 +77,7 @@ class WorkerManager {
     const configDir = path.join(this.baseDir, 'cypress', 'workers');
     await fs.mkdir(configDir, { recursive: true });
     
-    const configPath = path.join(configDir, `cypress.worker-${workerId}.config.ts`);
+    const configPath = path.resolve(configDir, `cypress.worker-${workerId}.config.js`);
     
     // Generate test spec pattern for this worker
     const testSpecs = workerSchedule.tests.map(test => test.path).join(',');
@@ -91,7 +91,7 @@ class WorkerManager {
       testSpecs,
       workerId,
       reporterOptions: {
-        outputDir: path.join(this.baseDir, 'cypress', 'results', `worker-${workerId}`),
+        outputDir: path.resolve(this.baseDir, 'cypress', 'results', `worker-${workerId}`),
         outputFile: `results-worker-${workerId}.json`
       }
     };
@@ -104,12 +104,16 @@ class WorkerManager {
     const basePort = 3000 + workerId; // Unique port per worker
     
     return `
-import { defineConfig } from 'cypress';
+// Load base configuration
+const baseConfig = require('../../cypress.config.ts');
 
-export default defineConfig({
+// Override with worker-specific settings
+module.exports = {
+  ...baseConfig,
   e2e: {
-    baseUrl: 'http://localhost:${basePort}',
-    supportFile: 'cypress/support/e2e.ts',
+    ...baseConfig.e2e,
+    
+    // Worker-specific test patterns
     specPattern: [${testSpecs.split(',').map(spec => `'${spec}'`).join(', ')}],
     
     // Worker-specific settings
@@ -117,23 +121,10 @@ export default defineConfig({
     screenshot: true,
     screenshotOnRunFailure: true,
     
-    // Timeouts
-    defaultCommandTimeout: 10000,
-    requestTimeout: 15000,
-    responseTimeout: 15000,
-    pageLoadTimeout: 30000,
+    // Unique base URL per worker
+    baseUrl: 'http://localhost:${basePort}',
     
-    // Viewport
-    viewportWidth: 1280,
-    viewportHeight: 720,
-    
-    // Retry configuration
-    retries: {
-      runMode: 2,
-      openMode: 0
-    },
-    
-    // Reporter configuration
+    // Reporter configuration for this worker
     reporter: 'json',
     reporterOptions: {
       outputDir: 'cypress/results/worker-${workerId}',
@@ -142,11 +133,17 @@ export default defineConfig({
     
     // Environment variables
     env: {
+      ...baseConfig.e2e?.env,
       WORKER_ID: ${workerId},
       PARALLEL_MODE: true
     },
     
     setupNodeEvents(on, config) {
+      // Call base setup if it exists
+      if (baseConfig.e2e?.setupNodeEvents) {
+        config = baseConfig.e2e.setupNodeEvents(on, config) || config;
+      }
+      
       // Worker-specific setup
       on('task', {
         log(message) {
@@ -158,7 +155,7 @@ export default defineConfig({
       return config;
     }
   }
-});
+};
 `;
   }
 
@@ -264,10 +261,8 @@ export default defineConfig({
       timestamp: new Date()
     });
     
-    // Log important messages
-    if (output.includes('Running:') || output.includes('✓') || output.includes('✗')) {
-      console.log(`[Worker ${workerInfo.id}] ${output.trim()}`);
-    }
+    // Log all output for debugging
+    console.log(`[Worker ${workerInfo.id}] ${type}: ${output.trim()}`);
     
     // Check for errors
     if (type === 'stderr' && output.trim()) {

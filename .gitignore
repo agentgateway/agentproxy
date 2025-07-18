@@ -1,6 +1,6 @@
 /node_modules
 /target
-/ui/ui/cypress/reports
+/ui/cypress/reports
 .vscode
 .idea
 .DS_Store
