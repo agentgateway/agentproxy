@@ -537,7 +537,7 @@ export default defineConfig({
   async cleanup() {
     try {
       const workersDir = path.join(this.baseDir, 'cypress', 'workers');
-      await fs.rmdir(workersDir, { recursive: true });
+      await fs.rm(workersDir, { recursive: true });
       console.log('🧹 Cleaned up worker configuration files');
     } catch (error) {
       console.warn('⚠️ Could not clean up worker files:', error.message);

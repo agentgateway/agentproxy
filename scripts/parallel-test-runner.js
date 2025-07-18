@@ -63,7 +63,7 @@ class ParallelTestRunner {
     
     // Initialize test scheduler
     this.testScheduler = new TestScheduler({
-      baseDir: path.join(this.options.baseDir, 'cypress', 'e2e'),
+      baseDir: 'cypress/e2e', // Relative to ui directory when script runs from ui
       strategy: this.options.strategy
     });
     
@@ -341,8 +341,8 @@ Parallel Test Execution Summary
 ===============================
 
 Execution Details:
-- Start Time: ${execution.startTime.toISOString()}
-- End Time: ${execution.endTime.toISOString()}
+- Start Time: ${execution.startTime ? execution.startTime.toISOString() : 'N/A'}
+- End Time: ${execution.endTime ? execution.endTime.toISOString() : 'N/A'}
 - Total Duration: ${(execution.totalDuration / 1000).toFixed(1)}s
 - Parallel Efficiency: ${(execution.parallelEfficiency.efficiency * 100).toFixed(1)}%
 - Speed Improvement: ${execution.parallelEfficiency.percentageImprovement.toFixed(1)}%

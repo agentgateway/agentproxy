@@ -66,10 +66,15 @@ class TestScheduler {
   async discoverTestFiles() {
     const testFiles = [];
     
+    console.log(`🔍 Searching for tests in: ${this.baseDir}`);
+    
     for (const [groupName, group] of Object.entries(this.testGroups)) {
+      console.log(`📂 Group ${groupName}:`);
       for (const pattern of group.patterns) {
         const fullPattern = path.join(this.baseDir, pattern);
+        console.log(`  Pattern: ${fullPattern}`);
         const files = glob.sync(fullPattern);
+        console.log(`  Found ${files.length} files: ${files.join(', ')}`);
         
         for (const file of files) {
           const relativePath = path.relative(process.cwd(), file);
@@ -79,6 +84,7 @@ class TestScheduler {
       }
     }
     
+    console.log(`📁 Total discovered: ${testFiles.length} test files`);
     return testFiles;
   }
 
