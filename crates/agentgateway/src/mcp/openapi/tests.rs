@@ -115,6 +115,8 @@ async fn setup() -> (MockServer, Handler) {
 			(test_tool_post, upstream_call_post),
 		],
 		policies: BackendPolicies::default(),
+		forward_all_headers: false,
+		exclude_headers: vec![],
 	};
 
 	(server, handler)
@@ -134,8 +136,9 @@ async fn test_call_tool_get_simple_success() {
 		.await;
 
 	let args = json!({ "path": { "user_id": user_id } });
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_ok());
@@ -159,8 +162,9 @@ async fn test_call_tool_get_with_query() {
 		.await;
 
 	let args = json!({ "path": { "user_id": user_id }, "query": { "verbose": verbose_flag } });
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_ok());
@@ -183,8 +187,9 @@ async fn test_call_tool_get_with_header() {
 		.await;
 
 	let args = json!({ "path": { "user_id": user_id }, "header": { "X-Request-ID": request_id } });
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_ok());
@@ -206,8 +211,9 @@ async fn test_call_tool_post_with_body() {
 		.await;
 
 	let args = json!({ "body": request_body });
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("create_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("create_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_ok());
@@ -237,8 +243,9 @@ async fn test_call_tool_post_all_params() {
 			"query": { "source": source },
 			"header": { "X-API-Key": api_key }
 	});
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("create_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("create_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_ok());
@@ -250,8 +257,9 @@ async fn test_call_tool_tool_not_found() {
 	let (_server, handler) = setup().await; // Mock server not needed
 
 	let args = json!({});
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("nonexistent_tool", Some(args.as_object().unwrap().clone()))
+		.call_tool("nonexistent_tool", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_err());
@@ -277,8 +285,9 @@ async fn test_call_tool_upstream_error() {
 		.await;
 
 	let args = json!({ "path": { "user_id": user_id } });
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	assert!(result.is_err());
@@ -307,8 +316,9 @@ async fn test_call_tool_invalid_header_value() {
 
 	// We expect the call to succeed, but the invalid header should be skipped (and logged)
 	// The mock doesn't expect the header, so if the request goes through without it, it passes.
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 	assert!(result.is_ok()); // Check that the call still succeeds despite the bad header
 	assert_eq!(result.unwrap(), json!({ "id": user_id }).to_string());
@@ -335,8 +345,9 @@ async fn test_call_tool_invalid_query_param_value() {
 	});
 
 	// We expect the call to succeed, but the invalid query param should be skipped (and logged)
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 	assert!(result.is_ok());
 	assert_eq!(result.unwrap(), json!({ "id": user_id }).to_string());
@@ -364,8 +375,9 @@ async fn test_call_tool_invalid_path_param_value() {
 	// The call might succeed at the HTTP level but might return an error from the server,
 	// or potentially fail if the path is fundamentally invalid after non-substitution.
 	// Here we assume the server returns 404 for the literal path.
+	let rq_ctx = crate::mcp::relay::RqCtx::default();
 	let result = handler
-		.call_tool("get_user", Some(args.as_object().unwrap().clone()))
+		.call_tool("get_user", Some(args.as_object().unwrap().clone()), &rq_ctx)
 		.await;
 
 	// Depending on server behavior for the literal path, this might be Ok or Err.

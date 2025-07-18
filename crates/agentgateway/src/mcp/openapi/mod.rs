@@ -507,9 +507,52 @@ pub struct Handler {
 	pub client: client::Client,
 	pub tools: Vec<(Tool, UpstreamOpenAPICall)>,
 	pub policies: BackendPolicies,
+	pub forward_all_headers: bool,
+	pub exclude_headers: Vec<String>,
 }
 
 impl Handler {
+	/// Extract headers from the incoming gateway request if header forwarding is enabled
+	fn extract_gateway_headers(&self, _rq_ctx: &crate::mcp::relay::RqCtx) -> HashMap<String, String> {
+		// Only forward headers if explicitly enabled
+		if !self.forward_all_headers {
+			return HashMap::new();
+		}
+		
+		// TODO: Access to HTTP headers needs to be passed through the call chain
+		// For now, return empty map until we can properly access the request headers
+		// This would require modifying the call_tool signature to accept the original
+		// HTTP request context or headers
+		HashMap::new()
+	}
+	
+	/// Check if header is sensitive and should be blocked by default
+	fn is_sensitive_header(&self, header_name: &str) -> bool {
+		matches!(header_name.to_lowercase().as_str(),
+			"cookie" | "set-cookie" | "authorization" | 
+			"x-forwarded-for" | "x-forwarded-host" | "x-forwarded-proto" |
+			"host" | "connection" | "content-length" | "transfer-encoding" |
+			"x-real-ip" | "x-original-host" | "x-forwarded-server" | 
+			"x-forwarded-port" | "forwarded"
+		)
+	}
+	
+	/// Check if header matches user-configured exclusions
+	fn is_excluded_header(&self, header_name: &str) -> bool {
+		self.exclude_headers.iter().any(|pattern| {
+			if pattern.contains('*') {
+				// Simple wildcard matching
+				let regex_pattern = pattern.replace("*", ".*");
+				regex::Regex::new(&format!("^{}$", regex_pattern))
+					.map(|re| re.is_match(header_name))
+					.unwrap_or(false)
+			} else {
+				// Exact match (case insensitive)
+				pattern.eq_ignore_ascii_case(header_name)
+			}
+		})
+	}
+
 	/// We need to use the parse the schema to get the correct args.
 	/// They are in the json schema under the "properties" key.
 	/// Body is under the "body" key.
@@ -532,6 +575,7 @@ impl Handler {
 		&self,
 		name: &str,
 		args: Option<JsonObject>,
+		rq_ctx: &crate::mcp::relay::RqCtx,
 	) -> Result<String, anyhow::Error> {
 		let (_tool, info) = self
 			.tools
@@ -552,12 +596,32 @@ impl Handler {
 			.and_then(Value::as_object)
 			.cloned()
 			.unwrap_or_default();
-		let header_params = args
+		let tool_header_params = args
 			.get(&*HEADER_NAME)
 			.and_then(Value::as_object)
 			.cloned()
 			.unwrap_or_default();
 		let body_value = args.get(&*BODY_NAME).cloned();
+
+		// --- Header Processing ---
+		// Extract headers from gateway request if forwarding is enabled
+		let gateway_headers = self.extract_gateway_headers(rq_ctx);
+		
+		// Merge gateway headers with tool-provided headers
+		// Tool headers take precedence over gateway headers
+		let mut final_headers = gateway_headers;
+		for (key, value) in &tool_header_params {
+			if let Some(s_val) = value.as_str() {
+				final_headers.insert(key.clone(), s_val.to_string());
+			} else {
+				tracing::warn!(
+					"Tool header parameter '{}' for tool '{}' is not a string (value: {:?}), skipping",
+					key,
+					name,
+					value
+				);
+			}
+		}
 
 		// --- URL Construction ---
 		let mut path = info.path.clone();
@@ -621,38 +685,27 @@ impl Handler {
 		};
 
 		let uri = format!("{base_url}{query_string}");
-		let mut headers = HeaderMap::new();
 		let mut rb = http::Request::builder().method(method).uri(uri);
 
 		rb = rb.header(ACCEPT, HeaderValue::from_static("application/json"));
-		for (key, value) in &header_params {
-			if let Some(s_val) = value.as_str() {
-				match (
-					HeaderName::from_bytes(key.as_bytes()),
-					HeaderValue::from_str(s_val),
-				) {
-					(Ok(h_name), Ok(h_value)) => {
-						rb = rb.header(h_name, h_value);
-					},
-					(Err(_), _) => tracing::warn!(
-						"Invalid header name '{}' for tool '{}', skipping",
-						key,
-						name
-					),
-					(_, Err(_)) => tracing::warn!(
-						"Invalid header value '{}' for header '{}' in tool '{}', skipping",
-						s_val,
-						key,
-						name
-					),
-				}
-			} else {
-				tracing::warn!(
-					"Header parameter '{}' for tool '{}' is not a string (value: {:?}), skipping",
+		
+		// Apply all final headers (gateway + tool headers)
+		for (key, value) in &final_headers {
+			match (HeaderName::from_bytes(key.as_bytes()), HeaderValue::from_str(value)) {
+				(Ok(h_name), Ok(h_value)) => {
+					rb = rb.header(h_name, h_value);
+				},
+				(Err(_), _) => tracing::warn!(
+					"Invalid header name '{}' for tool '{}', skipping",
 					key,
-					name,
-					value
-				);
+					name
+				),
+				(_, Err(_)) => tracing::warn!(
+					"Invalid header value '{}' for header '{}' in tool '{}', skipping",
+					value,
+					key,
+					name
+				),
 			}
 		}
 		// Build request body

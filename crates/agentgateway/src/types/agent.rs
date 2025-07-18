@@ -539,6 +539,14 @@ pub struct OpenAPITarget {
 	#[serde(deserialize_with = "de_openapi")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	pub schema: Arc<OpenAPI>,
+	
+	/// Forward all headers from gateway request to target API (default: false for security)
+	#[serde(default)]
+	pub forward_all_headers: bool,
+	
+	/// Additional headers to exclude when forward_all_headers is enabled
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub exclude_headers: Vec<String>,
 }
 
 fn de_openapi<'a, D>(deserializer: D) -> Result<Arc<OpenAPI>, D::Error>
