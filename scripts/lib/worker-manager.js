@@ -101,28 +101,39 @@ class WorkerManager {
    * Generate worker-specific Cypress configuration content
    */
   generateWorkerConfigContent(workerId, testSpecs, options) {
-    const basePort = 3000 + workerId; // Unique port per worker
-    
     return `
-// Load base configuration
-const baseConfig = require('../../cypress.config.ts');
-
-// Override with worker-specific settings
+// Worker-specific Cypress configuration
 module.exports = {
-  ...baseConfig,
   e2e: {
-    ...baseConfig.e2e,
-    
     // Worker-specific test patterns
     specPattern: [${testSpecs.split(',').map(spec => `'${spec}'`).join(', ')}],
+    
+    // Base URL - same as regular tests
+    baseUrl: 'http://localhost:3000/ui',
+    
+    // Support file
+    supportFile: 'cypress/support/e2e.ts',
     
     // Worker-specific settings
     video: ${options.video !== false},
     screenshot: true,
     screenshotOnRunFailure: true,
     
-    // Unique base URL per worker
-    baseUrl: 'http://localhost:${basePort}',
+    // Timeouts
+    defaultCommandTimeout: 10000,
+    requestTimeout: 15000,
+    responseTimeout: 15000,
+    pageLoadTimeout: 30000,
+    
+    // Viewport
+    viewportWidth: 1280,
+    viewportHeight: 720,
+    
+    // Retry configuration
+    retries: {
+      runMode: 2,
+      openMode: 0
+    },
     
     // Reporter configuration for this worker
     reporter: 'json',
@@ -133,17 +144,11 @@ module.exports = {
     
     // Environment variables
     env: {
-      ...baseConfig.e2e?.env,
       WORKER_ID: ${workerId},
       PARALLEL_MODE: true
     },
     
     setupNodeEvents(on, config) {
-      // Call base setup if it exists
-      if (baseConfig.e2e?.setupNodeEvents) {
-        config = baseConfig.e2e.setupNodeEvents(on, config) || config;
-      }
-      
       // Worker-specific setup
       on('task', {
         log(message) {
