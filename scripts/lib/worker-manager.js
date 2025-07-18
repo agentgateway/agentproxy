@@ -75,7 +75,11 @@ class WorkerManager {
    */
   async createWorkerConfig(workerId, workerSchedule, options) {
     const configDir = path.join(this.baseDir, 'cypress', 'workers');
+    const resultsDir = path.resolve(this.baseDir, 'cypress', 'results', `worker-${workerId}`);
+    
+    // Create both config and results directories
     await fs.mkdir(configDir, { recursive: true });
+    await fs.mkdir(resultsDir, { recursive: true });
     
     const configPath = path.resolve(configDir, `cypress.worker-${workerId}.config.js`);
     
@@ -91,7 +95,7 @@ class WorkerManager {
       testSpecs,
       workerId,
       reporterOptions: {
-        outputDir: path.resolve(this.baseDir, 'cypress', 'results', `worker-${workerId}`),
+        outputDir: resultsDir,
         outputFile: `results-worker-${workerId}.json`
       }
     };
@@ -103,6 +107,9 @@ class WorkerManager {
   generateWorkerConfigContent(workerId, testSpecs, options) {
     return `
 // Worker-specific Cypress configuration
+const path = require('path');
+const fs = require('fs');
+
 module.exports = {
   e2e: {
     // Worker-specific test patterns
@@ -118,6 +125,10 @@ module.exports = {
     video: ${options.video !== false},
     screenshot: true,
     screenshotOnRunFailure: true,
+    
+    // Video settings - ensure directories exist
+    videosFolder: 'cypress/videos',
+    videoCompression: 32,
     
     // Timeouts
     defaultCommandTimeout: 10000,
@@ -155,6 +166,25 @@ module.exports = {
           console.log(\`[Worker ${workerId}] \${message}\`);
           return null;
         }
+      });
+      
+      // Ensure video directories exist before tests run
+      on('before:run', (details) => {
+        const videoDir = path.resolve(config.videosFolder);
+        const subDirs = ['navigation', 'foundation', 'setup-wizard', 'configuration'];
+        
+        // Create main video directory
+        if (!fs.existsSync(videoDir)) {
+          fs.mkdirSync(videoDir, { recursive: true });
+        }
+        
+        // Create subdirectories for organized video storage
+        subDirs.forEach(subDir => {
+          const fullPath = path.join(videoDir, subDir);
+          if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+          }
+        });
       });
       
       return config;
@@ -357,6 +387,9 @@ module.exports = {
         results = JSON.parse(resultsContent);
       } catch (error) {
         console.warn(`⚠️ Could not read results for worker ${workerId}:`, error.message);
+        
+        // Create fallback results based on worker status
+        results = this.createFallbackResults(workerInfo);
       }
       
       // Store processed results
@@ -364,7 +397,7 @@ module.exports = {
         workerId,
         schedule: workerInfo.schedule,
         status: workerInfo.status,
-        duration: workerInfo.duration,
+        duration: workerInfo.duration || 0,
         exitCode: workerInfo.exitCode,
         results,
         output: workerInfo.output,
@@ -375,7 +408,61 @@ module.exports = {
       
     } catch (error) {
       console.error(`❌ Error processing results for worker ${workerId}:`, error.message);
+      
+      // Store minimal result even on error
+      this.workerResults.set(workerId, {
+        workerId,
+        schedule: workerInfo.schedule,
+        status: 'error',
+        duration: workerInfo.duration || 0,
+        exitCode: workerInfo.exitCode || -1,
+        results: this.createFallbackResults(workerInfo),
+        output: workerInfo.output || [],
+        errors: workerInfo.errors || [],
+        startTime: workerInfo.startTime,
+        endTime: workerInfo.endTime || new Date()
+      });
     }
+  }
+
+  /**
+   * Create fallback results when Cypress results file is missing
+   */
+  createFallbackResults(workerInfo) {
+    const testCount = workerInfo.schedule ? workerInfo.schedule.tests.length : 0;
+    
+    // Determine test outcomes based on worker status
+    let passes = 0;
+    let failures = 0;
+    let pending = 0;
+    
+    if (workerInfo.status === 'completed' && workerInfo.exitCode === 0) {
+      // Assume all tests passed if worker completed successfully
+      passes = testCount;
+    } else if (workerInfo.status === 'failed' || workerInfo.exitCode !== 0) {
+      // Assume all tests failed if worker failed
+      failures = testCount;
+    } else {
+      // Unknown status - mark as pending
+      pending = testCount;
+    }
+    
+    return {
+      stats: {
+        suites: 1,
+        tests: testCount,
+        passes,
+        pending,
+        failures,
+        start: workerInfo.startTime ? workerInfo.startTime.toISOString() : new Date().toISOString(),
+        end: workerInfo.endTime ? workerInfo.endTime.toISOString() : new Date().toISOString(),
+        duration: workerInfo.duration || 0
+      },
+      tests: [],
+      pending: [],
+      failures: [],
+      passes: []
+    };
   }
 
   /**

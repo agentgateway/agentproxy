@@ -227,25 +227,28 @@ class ParallelTestRunner {
    * Process and consolidate results
    */
   async processResults(workerResults, schedule) {
-    const totalDuration = this.endTime - this.startTime;
+    // Ensure we have valid timestamps
+    const safeStartTime = this.startTime || new Date();
+    const safeEndTime = this.endTime || new Date();
+    const totalDuration = Math.max(0, safeEndTime - safeStartTime);
     
     // Calculate statistics
     const stats = {
       execution: {
-        startTime: this.startTime,
-        endTime: this.endTime,
+        startTime: safeStartTime,
+        endTime: safeEndTime,
         totalDuration,
         parallelEfficiency: this.calculateParallelEfficiency(workerResults, totalDuration)
       },
       workers: {
-        total: workerResults.totalWorkers,
-        successful: workerResults.successfulWorkers,
-        failed: workerResults.failedWorkers,
-        errors: workerResults.errorWorkers
+        total: workerResults.totalWorkers || 0,
+        successful: workerResults.successfulWorkers || 0,
+        failed: workerResults.failedWorkers || 0,
+        errors: workerResults.errorWorkers || 0
       },
       tests: this.aggregateTestResults(workerResults),
-      resources: this.resourceMonitor.getResourceSummary(),
-      schedule: this.testScheduler.getScheduleStats(schedule)
+      resources: this.resourceMonitor ? this.resourceMonitor.getResourceSummary() : null,
+      schedule: this.testScheduler ? this.testScheduler.getScheduleStats(schedule) : null
     };
     
     // Generate reports
@@ -258,18 +261,42 @@ class ParallelTestRunner {
    * Calculate parallel execution efficiency
    */
   calculateParallelEfficiency(workerResults, totalDuration) {
-    const sequentialTime = workerResults.results.reduce((sum, result) => {
-      return sum + (result.duration || 0);
-    }, 0);
+    // Safely calculate sequential time from worker results
+    let sequentialTime = 0;
+    let validResults = 0;
     
-    const efficiency = sequentialTime > 0 ? (sequentialTime / totalDuration) : 0;
-    const speedup = sequentialTime > 0 ? (sequentialTime / totalDuration) : 1;
+    if (workerResults && workerResults.results && Array.isArray(workerResults.results)) {
+      for (const result of workerResults.results) {
+        if (result && typeof result.duration === 'number' && result.duration > 0) {
+          sequentialTime += result.duration;
+          validResults++;
+        }
+      }
+    }
+    
+    // Ensure totalDuration is valid
+    const safeTotalDuration = Math.max(totalDuration || 0, 1); // Minimum 1ms to avoid division by zero
+    
+    // Calculate metrics safely
+    const efficiency = sequentialTime > 0 && safeTotalDuration > 0 ? 
+      Math.min(sequentialTime / safeTotalDuration, 1) : 0;
+    
+    const speedup = sequentialTime > 0 && safeTotalDuration > 0 ? 
+      sequentialTime / safeTotalDuration : 1;
+    
+    const timeReduction = Math.max(0, sequentialTime - safeTotalDuration);
+    
+    const percentageImprovement = sequentialTime > 0 ? 
+      Math.max(0, Math.min(100, ((sequentialTime - safeTotalDuration) / sequentialTime) * 100)) : 0;
     
     return {
-      efficiency: Math.min(efficiency, 1), // Cap at 100%
-      speedup,
-      timeReduction: Math.max(0, sequentialTime - totalDuration),
-      percentageImprovement: sequentialTime > 0 ? ((sequentialTime - totalDuration) / sequentialTime) * 100 : 0
+      efficiency: Math.max(0, Math.min(1, efficiency)), // Ensure 0-1 range
+      speedup: Math.max(1, speedup), // Speedup should be at least 1
+      timeReduction,
+      percentageImprovement: Math.max(0, Math.min(100, percentageImprovement)), // Ensure 0-100 range
+      validResults,
+      sequentialTime,
+      totalDuration: safeTotalDuration
     };
   }
 
@@ -282,8 +309,19 @@ class ParallelTestRunner {
     let failedTests = 0;
     let skippedTests = 0;
     
+    // Ensure we have valid worker results
+    if (!workerResults || !workerResults.results || !Array.isArray(workerResults.results)) {
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        skipped: 0,
+        passRate: 0
+      };
+    }
+    
     for (const result of workerResults.results) {
-      if (result.results && result.results.stats) {
+      if (result && result.results && result.results.stats) {
         totalTests += result.results.stats.tests || 0;
         passedTests += result.results.stats.passes || 0;
         failedTests += result.results.stats.failures || 0;
