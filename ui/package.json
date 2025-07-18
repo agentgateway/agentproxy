@@ -19,7 +19,9 @@
     "test:e2e:parallel:dev": "node ../scripts/parallel-test-runner.js --dev",
     "test:e2e:parallel:ci": "node ../scripts/parallel-test-runner.js --ci",
     "test:e2e:parallel:debug": "node ../scripts/parallel-test-runner.js --debug --workers=1",
-    "test:e2e:sequential": "cypress run"
+    "test:e2e:sequential": "cypress run",
+    "test:setup-dirs": "node ../scripts/setup-test-directories.js",
+    "test:setup-dirs:clean": "node ../scripts/setup-test-directories.js --clean"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",

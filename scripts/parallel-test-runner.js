@@ -7,6 +7,7 @@ const { program } = require('commander');
 const ResourceMonitor = require('./lib/resource-monitor');
 const TestScheduler = require('./lib/test-scheduler');
 const WorkerManager = require('./lib/worker-manager');
+const { ensureDirectoryExists, REQUIRED_DIRECTORIES } = require('./setup-test-directories');
 
 /**
  * Intelligent Parallel Test Runner
@@ -55,6 +56,9 @@ class ParallelTestRunner {
   async initialize() {
     console.log('🚀 Initializing Parallel Test Runner...');
     
+    // Setup test directories first
+    await this.setupTestDirectories();
+    
     // Initialize resource monitor
     this.resourceMonitor = new ResourceMonitor({
       memoryLimit: this.options.memoryLimit,
@@ -77,6 +81,24 @@ class ParallelTestRunner {
     this.setupResourceMonitoring();
     
     console.log('✅ Initialization complete');
+  }
+
+  /**
+   * Setup test directories to prevent video recording errors
+   */
+  async setupTestDirectories() {
+    console.log('📁 Setting up test directories...');
+    
+    try {
+      // Ensure all required directories exist
+      for (const dir of REQUIRED_DIRECTORIES) {
+        ensureDirectoryExists(dir);
+      }
+      console.log('✅ Test directories ready');
+    } catch (error) {
+      console.error('❌ Failed to setup test directories:', error.message);
+      throw error;
+    }
   }
 
   /**
@@ -320,14 +342,28 @@ class ParallelTestRunner {
       };
     }
     
+    console.log(`📊 Aggregating results from ${workerResults.results.length} workers...`);
+    
     for (const result of workerResults.results) {
       if (result && result.results && result.results.stats) {
-        totalTests += result.results.stats.tests || 0;
-        passedTests += result.results.stats.passes || 0;
-        failedTests += result.results.stats.failures || 0;
-        skippedTests += result.results.stats.pending || 0;
+        const stats = result.results.stats;
+        const workerTests = stats.tests || 0;
+        const workerPasses = stats.passes || 0;
+        const workerFailures = stats.failures || 0;
+        const workerPending = stats.pending || 0;
+        
+        console.log(`  Worker ${result.workerId}: ${workerPasses}/${workerTests} passed, ${workerFailures} failed, ${workerPending} pending`);
+        
+        totalTests += workerTests;
+        passedTests += workerPasses;
+        failedTests += workerFailures;
+        skippedTests += workerPending;
+      } else {
+        console.warn(`  Worker ${result?.workerId || 'unknown'}: No valid results found`);
       }
     }
+    
+    console.log(`📊 Total aggregated: ${passedTests}/${totalTests} passed, ${failedTests} failed, ${skippedTests} pending`);
     
     return {
       total: totalTests,

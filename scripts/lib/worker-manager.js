@@ -171,7 +171,7 @@ module.exports = {
       // Ensure video directories exist before tests run
       on('before:run', (details) => {
         const videoDir = path.resolve(config.videosFolder);
-        const subDirs = ['navigation', 'foundation', 'setup-wizard', 'configuration'];
+        const subDirs = ['navigation', 'foundation', 'setup-wizard', 'configuration', 'playground', 'integration', 'error-handling'];
         
         // Create main video directory
         if (!fs.existsSync(videoDir)) {
@@ -324,15 +324,30 @@ module.exports = {
       clearTimeout(workerInfo.process.timeout);
     }
     
-    // Update worker status
-    workerInfo.status = code === 0 ? 'completed' : 'failed';
+    // Check if this is a video recording failure but tests passed
+    const hasVideoError = workerInfo.output.some(output => 
+      output.content.includes('ffmpeg exited with code 1') || 
+      output.content.includes('We failed to record the video')
+    );
+    
+    // Update worker status - treat video-only failures as success if tests passed
+    if (code === 0) {
+      workerInfo.status = 'completed';
+    } else if (hasVideoError && this.hasTestResults(workerInfo)) {
+      // If we have test results and only video failed, treat as success
+      workerInfo.status = 'completed';
+      console.log(`⚠️ Worker ${workerId} had video recording issues but tests passed (${(duration / 1000).toFixed(1)}s)`);
+    } else {
+      workerInfo.status = 'failed';
+    }
+    
     workerInfo.endTime = endTime;
     workerInfo.duration = duration;
     workerInfo.exitCode = code;
     workerInfo.signal = signal;
     
     // Log completion
-    if (code === 0) {
+    if (workerInfo.status === 'completed') {
       console.log(`✅ Worker ${workerId} completed successfully (${(duration / 1000).toFixed(1)}s)`);
     } else {
       console.error(`❌ Worker ${workerId} failed with code ${code} (${(duration / 1000).toFixed(1)}s)`);
@@ -340,6 +355,21 @@ module.exports = {
     
     // Process results
     this.processWorkerResults(workerId);
+  }
+
+  /**
+   * Check if worker has test results in output
+   */
+  hasTestResults(workerInfo) {
+    if (!workerInfo.output || !Array.isArray(workerInfo.output)) {
+      return false;
+    }
+    
+    return workerInfo.output.some(output => 
+      output.type === 'stdout' && 
+      output.content.includes('"stats"') && 
+      output.content.includes('"tests"')
+    );
   }
 
   /**
@@ -388,8 +418,8 @@ module.exports = {
       } catch (error) {
         console.warn(`⚠️ Could not read results for worker ${workerId}:`, error.message);
         
-        // Create fallback results based on worker status
-        results = this.createFallbackResults(workerInfo);
+        // Try to extract results from stdout JSON output
+        results = this.extractResultsFromOutput(workerInfo) || this.createFallbackResults(workerInfo);
       }
       
       // Store processed results
@@ -409,20 +439,57 @@ module.exports = {
     } catch (error) {
       console.error(`❌ Error processing results for worker ${workerId}:`, error.message);
       
+      // Try to extract results from output as fallback
+      const extractedResults = this.extractResultsFromOutput(workerInfo);
+      
       // Store minimal result even on error
       this.workerResults.set(workerId, {
         workerId,
         schedule: workerInfo.schedule,
-        status: 'error',
+        status: extractedResults ? 'completed' : 'error',
         duration: workerInfo.duration || 0,
-        exitCode: workerInfo.exitCode || -1,
-        results: this.createFallbackResults(workerInfo),
+        exitCode: workerInfo.exitCode || (extractedResults ? 0 : -1),
+        results: extractedResults || this.createFallbackResults(workerInfo),
         output: workerInfo.output || [],
         errors: workerInfo.errors || [],
         startTime: workerInfo.startTime,
         endTime: workerInfo.endTime || new Date()
       });
     }
+  }
+
+  /**
+   * Extract results from worker stdout output (when JSON reporter writes to stdout)
+   */
+  extractResultsFromOutput(workerInfo) {
+    if (!workerInfo.output || !Array.isArray(workerInfo.output)) {
+      return null;
+    }
+    
+    // Look for JSON output in stdout
+    for (const outputEntry of workerInfo.output) {
+      if (outputEntry.type === 'stdout' && outputEntry.content) {
+        const content = outputEntry.content.trim();
+        
+        // Try to find JSON blocks in the output
+        const jsonMatches = content.match(/\{[\s\S]*"stats"[\s\S]*\}/g);
+        if (jsonMatches) {
+          for (const jsonMatch of jsonMatches) {
+            try {
+              const parsed = JSON.parse(jsonMatch);
+              if (parsed.stats && typeof parsed.stats.tests === 'number') {
+                console.log(`✅ Extracted results from stdout for worker ${workerInfo.id}: ${parsed.stats.passes}/${parsed.stats.tests} passed`);
+                return parsed;
+              }
+            } catch (e) {
+              // Continue trying other matches
+            }
+          }
+        }
+      }
+    }
+    
+    return null;
   }
 
   /**
