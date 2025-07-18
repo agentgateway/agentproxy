@@ -12,7 +12,10 @@ describe('Configuration Persistence', () => {
       // Configure listener
       cy.get('[data-cy="listener-name-input"]').type('persistence-test-listener');
       cy.get('[data-cy="listener-port-input"]').clear().type('8080');
-      cy.get('[data-cy="listener-protocol-select"]').select('HTTP');
+      // Select HTTP protocol using radio button
+      cy.get('[data-cy="listener-protocol-select"]').within(() => {
+        cy.get('input[value="HTTP"]').click({ force: true });
+      });
       cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
       
       // Configure route
@@ -22,7 +25,10 @@ describe('Configuration Persistence', () => {
       
       // Configure backend
       cy.get('[data-cy="backend-name-input"]').type('persistence-test-backend');
-      cy.get('[data-cy="backend-type-select"]').select('Host');
+      // Select Host backend type using radio button
+      cy.get('[data-cy="backend-type-select"]').within(() => {
+        cy.get('input[value="Host"]').click({ force: true });
+      });
       cy.get('[data-cy="backend-target-name-input"]').type('http://localhost:3001');
       cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
       
@@ -95,7 +101,10 @@ describe('Configuration Persistence', () => {
       // Fill listener step
       cy.get('[data-cy="listener-name-input"]').type('partial-persistence-test');
       cy.get('[data-cy="listener-port-input"]').clear().type('8080');
-      cy.get('[data-cy="listener-protocol-select"]').select('HTTP');
+      // Select HTTP protocol using radio button
+      cy.get('[data-cy="listener-protocol-select"]').within(() => {
+        cy.get('input[value="HTTP"]').click({ force: true });
+      });
       cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
       
       // Fill route step partially
@@ -136,7 +145,10 @@ describe('Configuration Persistence', () => {
         // Configure listener
         cy.get('[data-cy="listener-name-input"]').type(config.name);
         cy.get('[data-cy="listener-port-input"]').clear().type(config.port);
-        cy.get('[data-cy="listener-protocol-select"]').select('HTTP');
+        // Select HTTP protocol using radio button
+        cy.get('[data-cy="listener-protocol-select"]').within(() => {
+          cy.get('input[value="HTTP"]').click({ force: true });
+        });
         cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
         
         // Quick route configuration
@@ -146,7 +158,10 @@ describe('Configuration Persistence', () => {
         
         // Quick backend configuration
         cy.get('[data-cy="backend-name-input"]').type(`integrity-backend-${index + 1}`);
-        cy.get('[data-cy="backend-type-select"]').select('Host');
+        // Select Host backend type using radio button
+        cy.get('[data-cy="backend-type-select"]').within(() => {
+          cy.get('input[value="Host"]').click({ force: true });
+        });
         cy.get('[data-cy="backend-target-name-input"]').type(`http://localhost:300${index + 1}`);
         cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
         
@@ -207,7 +222,10 @@ describe('Configuration Persistence', () => {
       cy.get('[data-cy="wizard-route-next"]').scrollIntoView().click({ force: true });
       
       cy.get('[data-cy="backend-name-input"]').type('consistency-test-backend');
-      cy.get('[data-cy="backend-type-select"]').select('Host');
+      // Select Host backend type using radio button
+      cy.get('[data-cy="backend-type-select"]').within(() => {
+        cy.get('input[value="Host"]').click({ force: true });
+      });
       cy.get('[data-cy="backend-target-name-input"]').type('http://localhost:3001');
       cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
       
@@ -353,7 +371,10 @@ describe('Configuration Persistence', () => {
       cy.get('[data-cy="wizard-route-next"]').scrollIntoView().click({ force: true });
       
       cy.get('[data-cy="backend-name-input"]').type('network-interruption-backend');
-      cy.get('[data-cy="backend-type-select"]').select('Host');
+      // Select Host backend type using radio button
+      cy.get('[data-cy="backend-type-select"]').within(() => {
+        cy.get('input[value="Host"]').click({ force: true });
+      });
       cy.get('[data-cy="backend-target-name-input"]').type('http://localhost:3001');
       
       // Attempt to complete configuration (may fail due to network issues)
@@ -386,7 +407,10 @@ describe('Configuration Persistence', () => {
       cy.get('[data-cy="wizard-route-next"]').scrollIntoView().click({ force: true });
       
       cy.get('[data-cy="backend-name-input"]').type('integrity-recovery-backend');
-      cy.get('[data-cy="backend-type-select"]').select('Host');
+      // Select Host backend type using radio button
+      cy.get('[data-cy="backend-type-select"]').within(() => {
+        cy.get('input[value="Host"]').click({ force: true });
+      });
       cy.get('[data-cy="backend-target-name-input"]').type('http://localhost:3001');
       cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
       
@@ -433,7 +457,10 @@ describe('Configuration Persistence', () => {
         cy.get('[data-cy="wizard-route-next"]').scrollIntoView().click({ force: true });
         
         cy.get('[data-cy="backend-name-input"]').type(`scale-test-backend-${i}`);
-        cy.get('[data-cy="backend-type-select"]').select('Host');
+        // Select Host backend type using radio button
+        cy.get('[data-cy="backend-type-select"]').within(() => {
+          cy.get('input[value="Host"]').click({ force: true });
+        });
         cy.get('[data-cy="backend-target-name-input"]').type(`http://localhost:300${i}`);
         cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
         

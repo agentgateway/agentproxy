@@ -16,7 +16,10 @@ describe('End-to-End Configuration Workflow', () => {
       cy.get('[data-cy="wizard-listener-step"]').should('be.visible');
       cy.get('[data-cy="listener-name-input"]').type('integration-test-listener');
       cy.get('[data-cy="listener-port-input"]').clear().type('8080');
-      cy.get('[data-cy="listener-protocol-select"]').select('HTTP');
+      // Select HTTP protocol using radio button
+      cy.get('[data-cy="listener-protocol-select"]').within(() => {
+        cy.get('input[value="HTTP"]').click({ force: true });
+      });
       cy.get('[data-cy="listener-hostname-input"]').type('localhost');
       cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
       
@@ -24,13 +27,19 @@ describe('End-to-End Configuration Workflow', () => {
       cy.get('[data-cy="wizard-route-step"]').should('be.visible');
       cy.get('[data-cy="route-name-input"]').type('integration-test-route');
       cy.get('[data-cy="route-path-input"]').type('/api/test');
-      cy.get('[data-cy="route-match-type-select"]').select('prefix');
+      // Select prefix match type using radio button
+      cy.get('[data-cy="route-match-type-select"]').within(() => {
+        cy.get('input[value="prefix"]').click({ force: true });
+      });
       cy.get('[data-cy="wizard-route-next"]').scrollIntoView().click({ force: true });
       
       // Step 5: Configure Backend
       cy.get('[data-cy="wizard-backend-step"]').should('be.visible');
       cy.get('[data-cy="backend-name-input"]').type('integration-test-backend');
-      cy.get('[data-cy="backend-type-select"]').select('Host');
+      // Select Host backend type using radio button
+      cy.get('[data-cy="backend-type-select"]').within(() => {
+        cy.get('input[value="Host"]').click({ force: true });
+      });
       cy.get('[data-cy="backend-target-name-input"]').type('http://localhost:3001');
       cy.get('[data-cy="wizard-backend-next"]').scrollIntoView().click({ force: true });
       
