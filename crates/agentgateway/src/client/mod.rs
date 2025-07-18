@@ -2,6 +2,7 @@ mod dns;
 mod hyperrustls;
 
 use std::fmt::Display;
+use std::str::FromStr;
 use std::task;
 
 use crate::http::backendtls::BackendTLS;
@@ -14,7 +15,9 @@ use crate::types::agent::ListenerProtocol::TLS;
 use crate::types::agent::Target;
 use crate::*;
 use ::http::Uri;
+use ::http::uri::Authority;
 use ::http::uri::Scheme;
+use axum::body::to_bytes;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util_fork::rt::TokioIo;
 use rand::prelude::IteratorRandom;
@@ -266,7 +269,18 @@ impl Client {
 			},
 		};
 		http::modify_req_uri(&mut req, |uri| {
-			uri.scheme = Some(transport.scheme());
+			let scheme = transport.scheme();
+			// Strip the port from the hostname if its the default already
+			// The hyper client does this for HTTP/1.1 but not for HTTP2
+			if let Some(a) = uri.authority.as_mut() {
+				if (scheme == Scheme::HTTPS && a.port_u16() == Some(443))
+					|| (scheme == Scheme::HTTP && a.port_u16() == Some(80))
+				{
+					*a =
+						Authority::from_str(a.host()).expect("host must be valid since it was already a host");
+				}
+			}
+			uri.scheme = Some(scheme);
 			Ok(())
 		})
 		.map_err(ProxyError::Processing)?;

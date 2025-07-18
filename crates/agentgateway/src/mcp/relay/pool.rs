@@ -174,7 +174,6 @@ impl ConnectionPool {
 				let url = format!("http://{}:{}{}", mcp.host, mcp.port, path);
 				let client =
 					ClientWrapper::new_with_client(self.client.clone(), target.backend_policies.clone());
-				let client = reqwest::Client::new();
 				let mut transport = StreamableHttpClientTransport::with_client(
 					client,
 					StreamableHttpClientTransportConfig {

@@ -10,6 +10,14 @@ export async function fetchConfig(): Promise<LocalConfig> {
     const response = await fetch(`${API_URL}/config`);
 
     if (!response.ok) {
+      if (response.status === 500) {
+        const errorText = await response.text();
+        const error = new Error(`Server configuration error: ${errorText}`);
+        (error as any).isConfigurationError = true;
+        (error as any).status = 500;
+        throw error;
+      }
+
       throw new Error(`Failed to fetch config: ${response.status} ${response.statusText}`);
     }
 

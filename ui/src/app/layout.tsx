@@ -8,6 +8,7 @@ import { ServerProvider } from "@/lib/server-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { WizardProvider } from "@/lib/wizard-context";
+import { ConfigErrorWrapper } from "@/components/config-error-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,13 +48,15 @@ export default function RootLayout({
           >
             <LoadingWrapper>
               <WizardProvider>
-                <SidebarProvider>
-                  <div className="flex min-h-screen w-full">
-                    <SidebarWrapper />
-                    <main className="flex-1 overflow-auto">{children}</main>
-                  </div>
-                </SidebarProvider>
-                <Toaster richColors />
+                <ConfigErrorWrapper>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <SidebarWrapper />
+                      <main className="flex-1 overflow-auto">{children}</main>
+                    </div>
+                  </SidebarProvider>
+                  <Toaster richColors />
+                </ConfigErrorWrapper>
               </WizardProvider>
             </LoadingWrapper>
           </ThemeProvider>

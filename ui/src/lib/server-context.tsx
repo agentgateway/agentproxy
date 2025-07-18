@@ -9,6 +9,7 @@ interface ServerContextType {
   setConfig: (config: Config) => void;
   isConnected: boolean;
   connectionError: string | null;
+  configError: (Error & { isConfigurationError?: boolean; status?: number }) | null;
   binds: Bind[];
   listeners: Listener[];
   targets: Target[];
@@ -31,6 +32,9 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
 
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<
+    (Error & { isConfigurationError?: boolean; status?: number }) | null
+  >(null);
   const [binds, setBinds] = useState<Bind[]>([]);
   const [listeners, setListeners] = useState<Listener[]>([]);
   const [targets, setTargets] = useState<TargetWithType[]>([]);
@@ -55,7 +59,17 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
       setPolicies(allPolicies);
     } catch (err) {
       console.error("Error refreshing binds:", err);
+      handleConfigurationError(err);
+    }
+  };
+
+  const handleConfigurationError = (err: any) => {
+    if (err instanceof Error && (err as any).isConfigurationError) {
+      setConfigError(err as Error & { isConfigurationError?: boolean; status?: number });
+      setConnectionError(null);
+    } else {
       setConnectionError(err instanceof Error ? err.message : "Failed to refresh binds");
+      setConfigError(null);
     }
   };
 
@@ -81,54 +95,62 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
       }));
     } catch (err) {
       console.error("Error refreshing targets:", err);
-      setConnectionError(err instanceof Error ? err.message : "Failed to refresh targets");
+
+      if (err instanceof Error && (err as any).isConfigurationError) {
+        setConfigError(err as Error & { isConfigurationError?: boolean; status?: number });
+        setConnectionError(null);
+      } else {
+        setConnectionError(err instanceof Error ? err.message : "Failed to refresh targets");
+        setConfigError(null);
+      }
     }
   };
 
-  // Load configuration from server on mount
-  useEffect(() => {
-    const loadConfiguration = async () => {
-      try {
-        // Fetch binds configuration
-        const bindsData = await fetchBinds();
-        setBinds(bindsData);
+  const loadConfiguration = async () => {
+    try {
+      const bindsData = await fetchBinds();
+      setBinds(bindsData);
 
-        // Extract all listeners from binds
-        const allListeners: Listener[] = [];
-        bindsData.forEach((bind) => {
-          allListeners.push(...bind.listeners);
-        });
-        setListeners(allListeners);
+      const allListeners: Listener[] = [];
+      bindsData.forEach((bind) => {
+        allListeners.push(...bind.listeners);
+      });
+      setListeners(allListeners);
 
-        // Fetch MCP targets (A2A targets are no longer supported in the new schema)
-        const mcpTargetsData = await fetchMcpTargets();
+      const mcpTargetsData = await fetchMcpTargets();
 
-        // Set targets directly as they're already properly typed
-        const targetsArray: TargetWithType[] = mcpTargetsData;
-        setTargets(targetsArray);
+      // Set targets directly as they're already properly typed
+      const targetsArray: TargetWithType[] = mcpTargetsData;
+      setTargets(targetsArray);
 
-        // Extract policies from listeners - in the new schema, policies are handled differently
-        // For now, we'll set an empty array since policies are handled at the route level
-        const allPolicies: any[] = [];
-        setPolicies(allPolicies);
+      const allPolicies: any[] = [];
+      setPolicies(allPolicies);
 
-        // Update the config state with the loaded data
-        setConfig({
-          type: "static",
-          listeners: allListeners,
-          targets: targetsArray,
-          policies: allPolicies,
-        });
+      setConfig({
+        type: "static",
+        listeners: allListeners,
+        targets: targetsArray,
+        policies: allPolicies,
+      });
 
-        setIsConnected(true);
+      setIsConnected(true);
+      setConnectionError(null);
+      setConfigError(null);
+    } catch (err) {
+      console.error("Error loading configuration:", err);
+
+      if (err instanceof Error && (err as any).isConfigurationError) {
+        setConfigError(err as Error & { isConfigurationError?: boolean; status?: number });
         setConnectionError(null);
-      } catch (err) {
-        console.error("Error loading configuration:", err);
+      } else {
         setConnectionError(err instanceof Error ? err.message : "Failed to load configuration");
-        setIsConnected(false);
+        setConfigError(null);
       }
-    };
+      setIsConnected(false);
+    }
+  };
 
+  useEffect(() => {
     loadConfiguration();
   }, []);
 
@@ -150,6 +172,7 @@ export function ServerProvider({ children }: { children: React.ReactNode }) {
         setConfig,
         isConnected,
         connectionError,
+        configError,
         binds,
         listeners,
         targets,

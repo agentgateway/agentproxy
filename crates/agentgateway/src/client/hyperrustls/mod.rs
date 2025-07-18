@@ -4,17 +4,18 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::{fmt, io};
 
+use crate::transport::stream;
+use crate::transport::stream::Socket;
 use http::Uri;
 use hyper::rt;
 use hyper_util::client::legacy::connect::{Connection, HttpConnector};
 use hyper_util::rt::TokioIo;
+use itertools::Itertools;
 use rustls_pki_types::ServerName;
 use tokio_rustls::TlsConnector;
 use tokio_rustls::client::TlsStream;
 use tower::Service;
-
-use crate::transport::stream;
-use crate::transport::stream::Socket;
+use tracing::debug;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -44,6 +45,10 @@ impl Service<Uri> for HttpsConnector {
 	fn call(&mut self, dst: Uri) -> Self::Future {
 		let cfg = self.tls_config.clone();
 		let hostname = self.server_name.clone();
+
+		debug!(%dst, ?hostname,
+			alpn=?cfg.alpn_protocols.iter().map(|bytes| String::from_utf8_lossy(bytes.as_slice())).collect_vec(),
+			"connecting tls");
 
 		let connecting_future = self.http.call(dst);
 		Box::pin(async move {
