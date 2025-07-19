@@ -579,7 +579,7 @@ describe('Form Validation', () => {
       cy.get('[data-cy="listener-port-input"]').clear().type('8080');
       // Click on HTTP radio button instead of using select
       cy.get('[data-cy="listener-protocol-select"]').within(() => {
-        cy.get('#http-protocol').click();
+        cy.get('input[value="http"]').click();
       });
       cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
       

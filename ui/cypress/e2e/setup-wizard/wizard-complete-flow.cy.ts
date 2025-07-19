@@ -20,8 +20,9 @@ describe('Setup Wizard Complete Flow', () => {
     cy.get('[data-cy="listener-port-input"]').clear().type('8080');
     
     // Select HTTP protocol
-    cy.get('[data-cy="listener-protocol-select"]').click();
-    cy.get('[data-state="checked"]').should('exist'); // HTTP should be selected by default
+    cy.get('[data-cy="listener-protocol-select"]').within(() => {
+      cy.get('input[value="http"]').click();
+    });
     
     cy.get('[data-cy="wizard-listener-next"]').scrollIntoView().click({ force: true });
 
@@ -33,8 +34,9 @@ describe('Setup Wizard Complete Flow', () => {
     cy.get('[data-cy="route-path-input"]').clear().type('/api/test');
     
     // Select path prefix match type (should be default)
-    cy.get('[data-cy="route-match-type-select"]').click();
-    cy.get('[data-state="checked"]').should('exist'); // Prefix should be selected by default
+    cy.get('[data-cy="route-match-type-select"]').within(() => {
+      cy.get('input[value="prefix"]').click();
+    });
     
     // Add a hostname
     cy.get('[data-cy="route-hostname-input"]').type('example.com');
@@ -50,15 +52,17 @@ describe('Setup Wizard Complete Flow', () => {
     cy.get('[data-cy="wizard-backend-step"]').should('be.visible');
     
     // Select backend type
-    cy.get('[data-cy="backend-type-select"]').click();
-    cy.get('[data-state="checked"]').should('exist'); // Host should be selected by default
+    cy.get('[data-cy="backend-type-select"]').within(() => {
+      cy.get('input[value="host"]').click();
+    });
     
     // Fill in backend details
     cy.get('[data-cy="backend-name-input"]').type('test-backend');
     
     // Select target type
-    cy.get('[data-cy="backend-target-type-select"]').click();
-    cy.get('[data-state="checked"]').should('exist'); // Hostname should be selected by default
+    cy.get('[data-cy="backend-target-type-select"]').within(() => {
+      cy.get('input[value="mcp"]').click();
+    });
     
     // Fill in target name
     cy.get('[data-cy="backend-target-name-input"]').type('api.example.com');
