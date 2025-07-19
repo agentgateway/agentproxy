@@ -47,7 +47,7 @@ Create an agentgateway that proxies requests to the strands agent
    cd a2a-samples/samples/python/hosts/cli
    ```
 
-3. Run the client and send several test messages to the Hello World agent.
+3. Run the client and send several test messages to the Calculator agent.
 
     ```sh
     uv run . --agent http://localhost:3000
