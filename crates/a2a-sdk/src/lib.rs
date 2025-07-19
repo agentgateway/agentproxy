@@ -8,8 +8,9 @@ mod jsonrpc;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::jsonrpc::*;
 use serde::{Deserialize, Serialize};
+
+use crate::jsonrpc::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]

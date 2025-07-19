@@ -2,7 +2,9 @@ use std::ops::Sub;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
+use agent_core::telemetry::{OptionExt, ValueBag};
 use http::Version;
+use itertools::Itertools;
 use opentelemetry::trace::{Span, SpanContext, SpanKind, TraceState, Tracer as _, TracerProvider};
 use opentelemetry::{Key, KeyValue, TraceFlags};
 use opentelemetry_otlp::WithExportConfig;
@@ -12,17 +14,19 @@ use tokio::io::AsyncWriteExt;
 pub use traceparent::TraceParent;
 
 use crate::http::Request;
-use crate::telemetry::log::RequestLog;
+use crate::telemetry::log::{CelLoggingExecutor, LoggingFields, RequestLog};
 
 #[derive(Clone, Debug)]
 pub struct Tracer {
 	pub tracer: Arc<opentelemetry_sdk::trace::SdkTracer>,
 	pub provider: SdkTracerProvider,
+	pub fields: Arc<LoggingFields>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, Clone, Debug)]
 pub struct Config {
 	pub endpoint: Option<String>,
+	pub fields: Arc<LoggingFields>,
 }
 
 mod semconv {
@@ -38,6 +42,18 @@ mod semconv {
 	pub static URL_QUERY: Key = Key::from_static_str("url.query");
 	pub static USER_AGENT: Key = Key::from_static_str("user_agent.original");
 	pub static PEER_ADDRESS: Key = Key::from_static_str("network.peer.address");
+}
+
+// Convert log keys to semconv
+fn to_key(k: &str) -> Key {
+	match k {
+		"http.path" => semconv::URL_PATH.clone(),
+		"http.status" => semconv::STATUS_CODE.clone(),
+		"http.method" => semconv::REQUEST_METHOD.clone(),
+		"src.addr" => semconv::PEER_ADDRESS.clone(),
+		// TODO: should we do http.version as well?
+		_ => Key::new(k.to_string()),
+	}
 }
 
 impl Tracer {
@@ -66,6 +82,7 @@ impl Tracer {
 		Ok(Some(Tracer {
 			tracer: Arc::new(tracer),
 			provider: result,
+			fields: cfg.fields.clone(),
 		}))
 	}
 
@@ -73,33 +90,27 @@ impl Tracer {
 		self.provider.shutdown();
 	}
 
-	pub fn send(&self, request: &RequestLog) {
+	pub fn send<'v>(
+		&self,
+		request: &RequestLog,
+		cel_exec: &CelLoggingExecutor,
+		attrs: &[(&str, Option<ValueBag<'v>>)],
+	) {
+		let mut attributes = attrs
+			.iter()
+			.filter_map(|(k, v)| v.as_ref().map(|v| (k, v)))
+			.map(|(k, v)| KeyValue::new(Key::new(k.to_string()), to_otel(v)))
+			.collect_vec();
 		let out_span = request.outgoing_span.as_ref().unwrap();
 		if !out_span.is_sampled() {
 			return;
 		}
-		let tcp_info = request.tcp_info.as_ref().expect("tODO");
 		let end = SystemTime::now();
-		let elapsed = tcp_info.start.elapsed();
-		let mut attributes = Vec::with_capacity(7);
+		let elapsed = request.tcp_info.start.elapsed();
 
-		if let Some(method) = &request.method {
-			attributes.push(KeyValue::new(
-				semconv::REQUEST_METHOD.clone(),
-				method.to_string(),
-			));
-		}
 		// For now we only accept HTTP(?)
 		attributes.push(KeyValue::new(semconv::URL_SCHEME.clone(), "http"));
-		if let Some(code) = &request.status {
-			attributes.push(KeyValue::new(
-				semconv::STATUS_CODE.clone(),
-				code.as_u16() as i64,
-			));
-		}
-		if let Some(path) = &request.path {
-			attributes.push(KeyValue::new(semconv::URL_PATH.clone(), path.to_string()));
-		}
+		// Otel spec has a special format here
 		match &request.version {
 			Some(Version::HTTP_11) => {
 				attributes.push(KeyValue::new(semconv::PROTOCOL_VERSION.clone(), "1.1"));
@@ -109,6 +120,19 @@ impl Tracer {
 			},
 			_ => {},
 		}
+
+		attributes.reserve(self.fields.add.len());
+
+		// To avoid lifetime issues need to store the expression before we give it to ValueBag reference.
+		// TODO: we could allow log() to take a list of borrows and then a list of OwnedValueBag
+		let raws = cel_exec.eval(&self.fields);
+		for (k, v) in &raws {
+			// TODO: convert directly instead of via json()
+			if let Some(eval) = v.as_ref().map(ValueBag::capture_serde1) {
+				attributes.push(KeyValue::new(Key::new(k.to_string()), to_otel(&eval)));
+			}
+		}
+
 		let span_name = match (&request.method, &request.path) {
 			(Some(method), Some(path)) => {
 				// TODO: should be path match, not the path!
@@ -116,6 +140,7 @@ impl Tracer {
 			},
 			_ => "unknown".to_string(),
 		};
+
 		let out_span = request.outgoing_span.as_ref().unwrap();
 		let mut sb = self
 			.tracer
@@ -135,13 +160,22 @@ impl Tracer {
 				true,
 				TraceState::default(),
 			);
-			sb = sb.with_links(vec![opentelemetry::trace::Link::new(
-				parent.clone(),
-				vec![],
-				0,
-			)]);
 		}
 		sb.start(self.tracer.as_ref()).end()
+	}
+}
+
+fn to_otel(v: &ValueBag) -> opentelemetry::Value {
+	use value_bag::visit::Visit;
+	use value_bag::{Error, ValueBag};
+	if let Some(b) = v.to_str() {
+		opentelemetry::Value::String(b.to_string().into())
+	} else if let Some(b) = v.to_i64() {
+		opentelemetry::Value::I64(b)
+	} else if let Some(b) = v.to_f64() {
+		opentelemetry::Value::F64(b)
+	} else {
+		opentelemetry::Value::String(v.to_string().into())
 	}
 }
 

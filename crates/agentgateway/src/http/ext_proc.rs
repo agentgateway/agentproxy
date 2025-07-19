@@ -17,6 +17,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use crate::client::{Client, Transport};
 use crate::control::AuthSource;
+use crate::http::backendtls::BackendTLS;
 use crate::http::ext_proc::proto::{
 	BodyMutation, BodyResponse, HeadersResponse, HttpBody, HttpHeaders, HttpTrailers,
 	ProcessingRequest, ProcessingResponse,
@@ -24,8 +25,6 @@ use crate::http::ext_proc::proto::{
 use crate::http::{HeaderName, HeaderValue};
 use crate::proxy::ProxyError;
 use crate::types::agent;
-
-use crate::http::backendtls::BackendTLS;
 use crate::types::agent::{Backend, Target};
 use crate::*;
 

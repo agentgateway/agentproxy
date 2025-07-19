@@ -4,6 +4,11 @@ binds:
   listeners:
   - routes:
     - policies:
+        cors:
+          allowOrigins:
+          - "*"
+          allowHeaders:
+          - "*"
         jwtAuth:
           issuer: agentgateway.dev
           audiences: [test.agentgateway.dev]

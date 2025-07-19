@@ -1,3 +1,20 @@
+use std::convert::Infallible;
+use std::future::Ready;
+use std::sync::Arc;
+use std::time::Instant;
+
+use ::http::{Method, Request, Uri, Version};
+use agent_core::drain::{DrainTrigger, DrainWatcher};
+use agent_core::{drain, metrics, strng};
+use axum::body::to_bytes;
+use hyper_util::client::legacy::Client;
+use hyper_util::client::legacy::connect::Connected;
+use hyper_util::rt::tokio::WithHyperIo;
+use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
+use prometheus_client::registry::Registry;
+use tokio::io::DuplexStream;
+use wiremock::{Mock, MockServer, ResponseTemplate};
+
 use crate::http::{Body, Response};
 use crate::proxy::Gateway;
 use crate::proxy::request_builder::RequestBuilder;
@@ -8,26 +25,7 @@ use crate::types::agent::{
 	Policy, PolicyTarget, Route, RouteBackend, RouteBackendReference, RouteMatch, RouteSet, Target,
 	TargetedPolicy,
 };
-use crate::*;
-use crate::{ProxyInputs, client, mcp};
-use ::http::Method;
-use ::http::Request;
-use ::http::Uri;
-use ::http::Version;
-use agent_core::drain::{DrainTrigger, DrainWatcher};
-use agent_core::{drain, metrics, strng};
-use axum::body::to_bytes;
-use hyper_util::client::legacy::Client;
-use hyper_util::client::legacy::connect::Connected;
-use hyper_util::rt::tokio::WithHyperIo;
-use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
-use prometheus_client::registry::Registry;
-use std::convert::Infallible;
-use std::future::Ready;
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::io::DuplexStream;
-use wiremock::{Mock, MockServer, ResponseTemplate};
+use crate::{ProxyInputs, client, mcp, *};
 
 #[tokio::test]
 async fn basic_handling() {

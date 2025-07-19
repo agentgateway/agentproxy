@@ -1,3 +1,19 @@
+use std::collections::HashMap;
+use std::io::Cursor;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use agent_core::prelude::Strng;
+use anyhow::{Error, anyhow, bail};
+use itertools::Itertools;
+use jsonwebtoken::jwk::{AlgorithmParameters, JwkSet, KeyAlgorithm};
+use jsonwebtoken::{DecodingKey, Validation};
+use rmcp::handler::server::router::tool::CallToolHandlerExt;
+use rustls::{ClientConfig, ServerConfig};
+use serde::de::DeserializeOwned;
+use serde_with::serde_as;
+
 use crate::http::auth::BackendAuth;
 use crate::http::backendtls::{BackendTLS, LocalBackendTLS};
 use crate::http::jwt::{JwkError, Jwt};
@@ -16,20 +32,6 @@ use crate::types::agent::{
 };
 use crate::types::discovery::{NamespacedHostname, Service};
 use crate::*;
-use agent_core::prelude::Strng;
-use anyhow::{Error, anyhow, bail};
-use itertools::Itertools;
-use jsonwebtoken::jwk::{AlgorithmParameters, JwkSet, KeyAlgorithm};
-use jsonwebtoken::{DecodingKey, Validation};
-use rmcp::handler::server::router::tool::CallToolHandlerExt;
-use rustls::{ClientConfig, ServerConfig};
-use serde::de::DeserializeOwned;
-use serde_with::serde_as;
-use std::collections::HashMap;
-use std::io::Cursor;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
 
 impl NormalizedLocalConfig {
 	pub async fn from(client: client::Client, s: &str) -> anyhow::Result<NormalizedLocalConfig> {
@@ -62,9 +64,11 @@ pub fn generate_schema() -> String {
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 struct LocalConfig {
+	#[serde(default)]
+	config: Arc<Option<serde_json::value::Value>>,
 	#[serde(default)]
 	binds: Vec<LocalBind>,
 	#[serde(default)]
@@ -143,7 +147,7 @@ struct LocalRoute {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct LocalRouteBackend {
 	#[serde(default = "default_weight")]
@@ -160,7 +164,7 @@ fn default_weight() -> usize {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum LocalBackend {
 	// This one is a reference
@@ -221,7 +225,7 @@ struct LocalTCPRoute {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct LocalTCPRouteBackend {
 	#[serde(default = "default_weight")]
@@ -230,7 +234,7 @@ pub struct LocalTCPRouteBackend {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum SimpleLocalBackend {
 	Service {
@@ -257,60 +261,86 @@ impl SimpleLocalBackend {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 struct FilterOrPolicy {
 	// Filters. Keep in sync with RouteFilter
+	/// Headers to be modified in the request.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	request_header_modifier: Option<filters::HeaderModifier>,
+
+	/// Headers to be modified in the response.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	response_header_modifier: Option<filters::HeaderModifier>,
+
+	/// Directly respond to the request with a redirect.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	request_redirect: Option<filters::RequestRedirect>,
+
+	/// Modify the URL path or authority.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	url_rewrite: Option<filters::UrlRewrite>,
+
+	/// Mirror incoming requests to another destination.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	request_mirror: Option<LocalRequestMirror>,
+
+	/// Directly respond to the request with a static response.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	direct_response: Option<filters::DirectResponse>,
+
+	/// Handle CORS preflight requests and append configured CORS headers to applicable requests.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	cors: Option<http::cors::Cors>,
 
 	// Policy
+	/// Authorization policies for MCP access.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	mcp_authorization: Option<McpAuthorization>,
+	/// Authentication for MCP clients.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	mcp_authentication: Option<McpAuthentication>,
+	/// Mark this traffic as A2A to enable A2A processing and telemetry.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	a2a: Option<A2aPolicy>,
+	/// Mark this as LLM traffic to enable LLM processing.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	ai: Option<llm::Policy>,
+
+	/// Send TLS to the backend.
 	#[serde(
 		rename = "backendTLS",
 		default,
 		skip_serializing_if = "Option::is_none"
 	)]
 	backend_tls: Option<http::backendtls::LocalBackendTLS>,
+	/// Authenticate to the backend.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	backend_auth: Option<BackendAuth>,
+	/// Rate limit incoming requests. State is kept local.
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	local_rate_limit: Vec<crate::http::localratelimit::RateLimit>,
+	/// Rate limit incoming requests. State is managed by a remote server.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	remote_rate_limit: Option<crate::http::remoteratelimit::RemoteRateLimit>,
+	/// Authenticate incoming JWT requests.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	jwt_auth: Option<crate::http::jwt::LocalJwtConfig>,
+	/// Authenticate incoming requests by calling an external authorization server.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	#[cfg_attr(feature = "schema", schemars(with = "serde_json::value::RawValue"))]
 	ext_authz: Option<crate::http::ext_authz::ExtAuthz>,
 
 	// TrafficPolicy
+	/// Timeout requests that exceed the configured duration.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	timeout: Option<timeout::Policy>,
+	/// Retry matching requests.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	retry: Option<retry::Policy>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 struct TCPFilterOrPolicy {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -319,6 +349,7 @@ struct TCPFilterOrPolicy {
 
 async fn convert(client: client::Client, i: LocalConfig) -> anyhow::Result<NormalizedLocalConfig> {
 	let LocalConfig {
+		config: _,
 		binds,
 		workloads,
 		services,

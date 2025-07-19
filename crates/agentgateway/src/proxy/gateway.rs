@@ -1,8 +1,9 @@
-use crate::ProxyInputs;
-use crate::store::Event;
-use crate::telemetry::metrics::TCPLabels;
-use crate::transport::stream::{BytesCounter, Extension, LoggingMode, Socket};
-use crate::types::agent::{Bind, BindName, BindProtocol, Listener, ListenerProtocol};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Instant;
+
 use agent_core::drain;
 use agent_core::drain::{DrainUpgrader, DrainWatcher};
 use anyhow::anyhow;
@@ -11,16 +12,17 @@ use futures_util::FutureExt;
 use http::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::server::conn::auto;
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Instant;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 use tokio::task::{AbortHandle, JoinSet};
 use tokio_stream::StreamExt;
 use tracing::{Instrument, debug, event, info, info_span, warn};
+
+use crate::ProxyInputs;
+use crate::store::Event;
+use crate::telemetry::metrics::TCPLabels;
+use crate::transport::stream::{BytesCounter, Extension, LoggingMode, Socket};
+use crate::types::agent::{Bind, BindName, BindProtocol, Listener, ListenerProtocol};
 
 #[cfg(test)]
 #[path = "gateway_test.rs"]

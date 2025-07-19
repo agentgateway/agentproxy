@@ -8,17 +8,17 @@ mod msg;
 mod nonblocking;
 mod worker;
 
+use std::cell::RefCell;
+use std::fmt::{Debug, Display, Write as FmtWrite};
+use std::str::FromStr;
+use std::time::Instant;
+use std::{env, fmt, io};
+
 use itertools::Itertools;
 use nonblocking::NonBlocking;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::Serializer;
 use serde::ser::SerializeMap;
-use std::cell::RefCell;
-use std::fmt::Debug;
-use std::fmt::{Display, Write as FmtWrite};
-use std::str::FromStr;
-use std::time::Instant;
-use std::{env, fmt, io};
 use thiserror::Error;
 use tracing::{Event, Subscriber, error, field, info, warn};
 use tracing_core::Field;

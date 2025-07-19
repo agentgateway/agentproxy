@@ -4,17 +4,15 @@ pub mod httpproxy;
 pub mod request_builder;
 pub mod tcpproxy;
 
-use crate::http::Body;
-use crate::http::HeaderValue;
-use crate::http::Response;
-use crate::http::StatusCode;
+pub use gateway::Gateway;
+use hyper_util_fork::client::legacy::Error as HyperError;
+
+use crate::http::{Body, HeaderValue, Response, StatusCode};
 use crate::types::agent::{
 	Backend, BackendReference, RouteBackend, RouteBackendReference, SimpleBackend,
 	SimpleBackendReference,
 };
 use crate::*;
-pub use gateway::Gateway;
-use hyper_util_fork::client::legacy::Error as HyperError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ProxyError {

@@ -1,16 +1,17 @@
 // Derived from https://github.com/tokio-rs/tracing/blob/e63ef57f3d686abe3727ddd586eb9af73d6715b7/tracing-appender/src/non_blocking.rs#L1-L491
 // Under MIT license
-use super::msg::Msg;
-use super::worker::Worker;
-use crossbeam_channel::{SendTimeoutError, Sender, bounded};
 use std::io;
 use std::io::Write;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+use crossbeam_channel::{SendTimeoutError, Sender, bounded};
 use tracing_subscriber::fmt::MakeWriter;
+
+use super::msg::Msg;
+use super::worker::Worker;
 
 /// The default maximum number of buffered log lines.
 ///
@@ -285,10 +286,11 @@ impl ErrorCounter {
 
 #[cfg(test)]
 mod test {
-	use super::*;
 	use std::sync::mpsc;
 	use std::thread;
 	use std::time::Duration;
+
+	use super::*;
 
 	struct MockWriter {
 		tx: mpsc::SyncSender<String>,

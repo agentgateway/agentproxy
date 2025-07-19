@@ -5,6 +5,14 @@ use std::fmt::Display;
 use std::str::FromStr;
 use std::task;
 
+use ::http::Uri;
+use ::http::uri::{Authority, Scheme};
+use axum::body::to_bytes;
+use hyper_util_fork::rt::TokioIo;
+use rand::prelude::IteratorRandom;
+use rustls_pki_types::{DnsName, ServerName};
+use tracing::event;
+
 use crate::http::backendtls::BackendTLS;
 use crate::proxy::ProxyError;
 use crate::transport::hbone::WorkloadKey;
@@ -14,15 +22,6 @@ use crate::types::agent;
 use crate::types::agent::ListenerProtocol::TLS;
 use crate::types::agent::Target;
 use crate::*;
-use ::http::Uri;
-use ::http::uri::Authority;
-use ::http::uri::Scheme;
-use axum::body::to_bytes;
-use hyper_util::client::legacy::connect::HttpConnector;
-use hyper_util_fork::rt::TokioIo;
-use rand::prelude::IteratorRandom;
-use rustls_pki_types::{DnsName, ServerName};
-use tracing::event;
 
 #[derive(Clone)]
 pub struct Client {
@@ -92,7 +91,6 @@ impl Transport {
 
 #[derive(Debug, Clone)]
 struct Connector {
-	http: HttpConnector,
 	hbone_pool: Option<agent_hbone::pool::WorkloadHBONEPool<hbone::WorkloadKey>>,
 }
 
@@ -128,21 +126,13 @@ impl tower::Service<::http::Extensions> for Connector {
 							DnsName::try_from(host.to_string()).expect("TODO: hostname conversion failed"),
 						),
 					};
-					// TODO: replace with Socket::dial
+
 					let mut https = self::hyperrustls::HttpsConnector {
-						http: it.http,
 						tls_config: tls.config.clone(),
 						server_name,
 					};
 
-					let uri = Uri::builder()
-						.scheme(Scheme::HTTPS)
-						.authority(ep.to_string())
-						.path_and_query("/")
-						.build()
-						.expect("todo");
-
-					let mut res = https.call(uri).await.map_err(crate::http::Error::new)?;
+					let mut res = https.call(ep).await.map_err(crate::http::Error::new)?;
 					res.with_logging(LoggingMode::Upstream);
 					Ok(TokioIo::new(res))
 				},
@@ -204,15 +194,10 @@ impl Client {
 		hbone_pool: Option<agent_hbone::pool::WorkloadHBONEPool<hbone::WorkloadKey>>,
 	) -> Client {
 		let resolver = dns::CachedResolver::new(cfg.resolver_cfg.clone(), cfg.resolver_opts.clone());
-		let mut base = HttpConnector::new();
-		base.enforce_http(false);
 		let client =
 			::hyper_util_fork::client::legacy::Client::builder(::hyper_util::rt::TokioExecutor::new())
 				.timer(hyper_util::rt::tokio::TokioTimer::new())
-				.build_with_pool_key(Connector {
-					http: base,
-					hbone_pool,
-				});
+				.build_with_pool_key(Connector { hbone_pool });
 		Client {
 			resolver: Arc::new(resolver),
 			client,
@@ -310,7 +295,7 @@ impl Client {
 			http.host = host.as_ref().map(display),
 			http.path = %path,
 			http.version = ?version,
-			http.status = resp.as_ref().ok().map(|s| s.status().as_u16()),
+			http.status = resp.as_ref().ok().map(|s| s.status().as_u16()).unwrap_or_default(),
 
 			duration = dur,
 		);

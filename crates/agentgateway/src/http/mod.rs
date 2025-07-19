@@ -27,6 +27,9 @@ pub use ::http::uri::{Authority, Scheme};
 pub use ::http::{
 	HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri, header, status, uri,
 };
+use axum::body::to_bytes;
+use bytes::Bytes;
+use serde::de::DeserializeOwned;
 use tower_serve_static::private::mime;
 
 use crate::proxy::ProxyError;
@@ -97,6 +100,13 @@ pub fn get_host(req: &Request) -> Result<&str, ProxyError> {
 	let host = req.uri().host().ok_or(ProxyError::InvalidRequest)?;
 	let host = strip_port(host);
 	Ok(host)
+}
+
+pub async fn inspect_body(body: &mut Body) -> anyhow::Result<Bytes> {
+	let orig = std::mem::replace(body, Body::empty());
+	let bytes = to_bytes(orig, 2_097_152).await?;
+	*body = Body::from(bytes.clone());
+	Ok(bytes)
 }
 
 // copied from private `http` method

@@ -1,19 +1,25 @@
 // Portions of this code are heavily inspired from https://github.com/Kuadrant/wasm-shim/
 // Under Apache 2.0 license (https://github.com/Kuadrant/wasm-shim/blob/main/LICENSE)
 
-use crate::http::jwt::Claims;
-use crate::serdes::*;
+use std::collections::HashSet;
+use std::fmt::{Debug, Display, Formatter};
+use std::sync::Arc;
+
 use axum_core::body::Body;
 use bytes::Bytes;
 use cel_interpreter::extractors::{Arguments, This};
 use cel_interpreter::objects::{Key, Map, TryIntoValue, ValueType};
-use cel_interpreter::{Context, ExecutionError, Program, ResolveResult, Value};
+use cel_interpreter::{Context, ExecutionError, FunctionContext, Program, ResolveResult, Value};
 use cel_parser::{Expression as CelExpression, ParseError};
 use http::Request;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashSet;
-use std::fmt::{Debug, Display, Formatter};
-use std::sync::Arc;
+
+use crate::http::backendtls::{BackendTLS, LocalBackendTLS};
+use crate::http::jwt::Claims;
+use crate::json;
+use crate::serdes::*;
+use crate::telemetry::log::CelLogging;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -32,6 +38,7 @@ impl From<Box<dyn std::error::Error>> for Error {
 }
 
 const REQUEST_ATTRIBUTE: &str = "request";
+const REQUEST_BODY_ATTRIBUTE: &str = "request.body";
 const RESPONSE_ATTRIBUTE: &str = "response";
 const JWT_ATTRIBUTE: &str = "jwt";
 const MCP_ATTRIBUTE: &str = "mcp";
@@ -40,7 +47,6 @@ pub struct Expression {
 	attributes: HashSet<String>,
 	expression: CelExpression,
 	original_expression: String,
-	root_context: Context<'static>,
 }
 
 impl Serialize for Expression {
@@ -60,45 +66,66 @@ impl Debug for Expression {
 	}
 }
 
-pub struct ExpressionCall {
-	expression: Arc<Expression>,
+fn root_context() -> Arc<Context<'static>> {
+	let mut ctx = Context::default();
+	ctx.add_function("json", fns::json_parse);
+	Arc::new(ctx)
+}
+
+static ROOT_CONTEXT: Lazy<Arc<Context<'static>>> = Lazy::new(|| Arc::new(Context::default()));
+
+pub struct ContextBuilder {
+	attributes: HashSet<String>,
 	context: ExpressionContext,
 }
 
-impl Debug for ExpressionCall {
+impl Debug for ContextBuilder {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("ExpressionCall").finish()
+		f.debug_struct("ContextBuilder").finish()
 	}
 }
-impl ExpressionCall {}
 
-impl ExpressionCall {
-	pub fn new(expression: &str) -> Result<Self, Error> {
-		let exp = Expression::new(expression)?;
-		Ok(ExpressionCall {
-			expression: Arc::new(exp),
-			context: ExpressionContext::default(),
-		})
+impl Default for ContextBuilder {
+	fn default() -> Self {
+		Self::new()
 	}
-	pub fn from_expression(expression: Arc<Expression>) -> Self {
-		ExpressionCall {
-			expression,
-			context: ExpressionContext::default(),
+}
+
+impl ContextBuilder {
+	pub fn new() -> Self {
+		Self {
+			attributes: Default::default(),
+			context: Default::default(),
 		}
 	}
-	pub fn with_request(&mut self, req: &crate::http::Request) {
-		if !self.expression.attributes.contains(REQUEST_ATTRIBUTE) {
+	/// register_expression registers the given expressions attributes as required attributes.
+	/// Callers MUST call this for each expression they wish to call with the context if they want correct results.
+	pub fn register_expression(&mut self, expression: &Expression) {
+		self
+			.attributes
+			.extend(expression.attributes.iter().cloned());
+	}
+	pub fn with_request_body(&mut self, body: Bytes) {
+		let Some(r) = &mut self.context.request else {
 			return;
+		};
+		r.body = Some(body);
+	}
+	pub fn with_request(&mut self, req: &crate::http::Request) -> bool {
+		if !self.attributes.contains(REQUEST_ATTRIBUTE) {
+			return false;
 		}
 		self.context.request = Some(RequestContext {
 			method: req.method().clone(),
 			// TODO: split headers and the rest?
 			headers: req.headers().clone(),
 			uri: req.uri().clone(),
-		})
+			body: None,
+		});
+		self.attributes.contains(REQUEST_BODY_ATTRIBUTE)
 	}
 	pub fn with_response(&mut self, resp: &crate::http::Response) {
-		if !self.expression.attributes.contains(RESPONSE_ATTRIBUTE) {
+		if !self.attributes.contains(RESPONSE_ATTRIBUTE) {
 			return;
 		}
 		self.context.response = Some(ResponseContext {
@@ -107,30 +134,52 @@ impl ExpressionCall {
 	}
 
 	pub fn with_jwt(&mut self, info: &Claims) {
-		if !self.expression.attributes.contains(JWT_ATTRIBUTE) {
+		if !self.attributes.contains(JWT_ATTRIBUTE) {
 			return;
 		}
 		self.context.jwt = Some(info.clone())
 	}
 
-	pub fn with_mcp(&mut self, info: &crate::mcp::rbac::ResourceType) {
-		if !self.expression.attributes.contains(MCP_ATTRIBUTE) {
-			return;
-		}
-		self.context.mcp = Some(info.clone())
+	pub fn build_with_mcp(
+		&self,
+		mcp: Option<&crate::mcp::rbac::ResourceType>,
+	) -> Result<Executor<'static>, Error> {
+		let mut ctx: Context<'static> = ROOT_CONTEXT.new_inner_scope();
+
+		let ExpressionContext {
+			request,
+			response,
+			jwt,
+		} = &self.context;
+
+		ctx.add_variable_from_value(REQUEST_ATTRIBUTE, opt_to_value(request)?);
+		ctx.add_variable_from_value(RESPONSE_ATTRIBUTE, opt_to_value(response)?);
+		ctx.add_variable_from_value(JWT_ATTRIBUTE, opt_to_value(jwt)?);
+		ctx.add_variable_from_value(MCP_ATTRIBUTE, opt_to_value(&mcp)?);
+
+		Ok(Executor { ctx })
 	}
 
-	pub fn eval(&self) -> Result<Value, Error> {
-		self.expression.eval(&self.context)
+	pub fn build(&self) -> Result<Executor<'static>, Error> {
+		self.build_with_mcp(None)
 	}
-	pub fn eval_bool(&self) -> bool {
-		match self.expression.eval(&self.context) {
+}
+
+impl Executor<'_> {
+	pub fn eval(&self, expr: &Expression) -> Result<Value, Error> {
+		Ok(Value::resolve(&expr.expression, &self.ctx)?)
+	}
+	pub fn eval_bool(&self, expr: &Expression) -> bool {
+		match self.eval(expr) {
 			Ok(Value::Bool(b)) => b,
 			_ => false,
 		}
 	}
 }
 
+pub struct Executor<'a> {
+	ctx: Context<'a>,
+}
 impl Expression {
 	pub fn new(original_expression: impl Into<String>) -> Result<Self, Error> {
 		let original_expression = original_expression.into();
@@ -142,33 +191,18 @@ impl Expression {
 		// For now we only look at the first level. We could be more precise
 		let mut attributes: HashSet<String> = props
 			.into_iter()
-			.filter_map(|tokens| tokens.first().map(|s| s.to_string()))
+			.filter_map(|tokens| match tokens.as_slice() {
+				["request", "body", ..] => Some(REQUEST_BODY_ATTRIBUTE.to_string()),
+				[first, ..] => Some(first.to_string()),
+				_ => None,
+			})
 			.collect();
 
 		Ok(Self {
 			attributes,
 			expression,
 			original_expression,
-			root_context: Context::default(),
 		})
-	}
-
-	fn eval(&self, ec: &ExpressionContext) -> Result<Value, Error> {
-		let mut ctx = self.root_context.new_inner_scope();
-
-		let ExpressionContext {
-			request,
-			response,
-			jwt,
-			mcp,
-		} = ec;
-
-		ctx.add_variable_from_value("request", opt_to_value(request)?);
-		ctx.add_variable_from_value("response", opt_to_value(response)?);
-		ctx.add_variable_from_value("jwt", opt_to_value(jwt)?);
-		ctx.add_variable_from_value("mcp", opt_to_value(mcp)?);
-
-		Ok(Value::resolve(&self.expression, &ctx)?)
 	}
 }
 
@@ -177,7 +211,6 @@ struct ExpressionContext {
 	request: Option<RequestContext>,
 	response: Option<ResponseContext>,
 	jwt: Option<Claims>,
-	mcp: Option<crate::mcp::rbac::ResourceType>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -190,6 +223,8 @@ struct RequestContext {
 
 	#[serde(with = "http_serde::header_map")]
 	headers: ::http::HeaderMap,
+
+	body: Option<Bytes>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -334,50 +369,182 @@ fn to_value(v: impl Serialize) -> Result<Value, Error> {
 	cel_interpreter::to_value(v).map_err(|e| Error::Variable(e.to_string()))
 }
 
+mod fns {
+	use std::sync::Arc;
+
+	use cel_interpreter::{FunctionContext, ResolveResult, Value};
+
+	use crate::cel::to_value;
+
+	pub fn json_parse(ftx: &FunctionContext, v: Value) -> ResolveResult {
+		let sv = match v {
+			Value::String(b) => serde_json::from_str(b.as_str()),
+			Value::Bytes(b) => serde_json::from_slice(b.as_ref()),
+			_ => return Err(ftx.error("invalid type")),
+		};
+		let sv: serde_json::Value = sv.map_err(|e| ftx.error(e))?;
+		to_value(sv).map_err(|e| ftx.error(e))
+	}
+}
+
 #[cfg(any(test, feature = "internal_benches"))]
 pub mod tests {
+	use std::collections::HashMap;
+	use std::fs::File;
+	use std::io::Write;
+	use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+	use std::time::Duration;
+
+	use agent_core::strng;
+	use divan::Bencher;
+	use http::Method;
+
 	use super::*;
 	use crate::http::Body;
 	use crate::store::Stores;
 	use crate::types::agent::{Listener, ListenerProtocol, PathMatch, Route, RouteMatch, RouteSet};
-	use agent_core::strng;
-	use divan::Bencher;
-	use http::Method;
-	use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+	fn simple(expr: &str, req: crate::http::Request) -> Result<Value, Error> {
+		let mut cb = ContextBuilder::new();
+		let exp = Expression::new(expr)?;
+		cb.register_expression(&exp);
+		cb.with_request(&req);
+		let exec = cb.build()?;
+		exec.eval(&exp)
+	}
+
+	#[test]
+	fn test_eval() {
+		let expr = Arc::new(Expression::new(r#"request.method"#).unwrap());
+		let ctx = root_context();
+		let req = ::http::Request::builder()
+			.method(Method::GET)
+			.header("x-example", "value")
+			.body(Body::empty())
+			.unwrap();
+		let mut cb = ContextBuilder::new();
+		cb.register_expression(&expr);
+		cb.with_request(&req);
+		let exec = cb.build().unwrap();
+
+		exec.eval(&expr);
+	}
 
 	#[test]
 	fn expression() {
-		let mut expr =
-			ExpressionCall::new(r#"request.method == "GET" && request.headers["x-example"] == "value""#)
-				.unwrap();
+		let expr = r#"request.method == "GET" && request.headers["x-example"] == "value""#;
 		let req = ::http::Request::builder()
 			.method(Method::GET)
 			.uri("http://example.com")
 			.header("x-example", "value")
 			.body(Body::empty())
 			.unwrap();
-		expr.with_request(&req);
-		assert_eq!(Value::Bool(true), expr.eval().unwrap());
+		assert_eq!(Value::Bool(true), simple(expr, req).unwrap());
 	}
 
 	#[divan::bench]
-	fn bench_with_request(b: Bencher) {
+	fn bench_native(b: Bencher) {
+		let req = ::http::Request::builder()
+			.method(Method::GET)
+			.header("x-example", "value")
+			.body(http_body_util::Empty::<Bytes>::new())
+			.unwrap();
+		b.bench(|| {
+			divan::black_box(req.method());
+		});
+	}
+
+	#[divan::bench]
+	fn bench_native_map(b: Bencher) {
+		let req = ::http::Request::builder()
+			.method(Method::GET)
+			.header("x-example", "value")
+			.body(http_body_util::Empty::<Bytes>::new())
+			.unwrap();
+		let map = HashMap::from([(
+			"request".to_string(),
+			HashMap::from([("method".to_string(), "GET".to_string())]),
+		)]);
+
+		with_profiling("native", || {
+			b.bench(|| {
+				divan::black_box(map.get("request").unwrap().get("method").unwrap());
+			});
+		})
+	}
+
+	#[macro_export]
+	macro_rules! function {
+		() => {{
+			fn f() {}
+			fn type_name_of<T>(_: T) -> &'static str {
+				std::any::type_name::<T>()
+			}
+			let name = type_name_of(f);
+			let name = &name[..name.len() - 3].to_string();
+			name.strip_suffix("::with_profiling").unwrap().to_string()
+		}};
+	}
+
+	fn with_profiling(name: &str, f: impl FnOnce()) {
+		use pprof::protos::Message;
+		let guard = pprof::ProfilerGuardBuilder::default()
+			.frequency(1000)
+			// .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+			.build()
+			.unwrap();
+
+		f();
+
+		let report = guard.report().build().unwrap();
+		let profile = report.pprof().unwrap();
+
+		let mut body = profile.write_to_bytes().unwrap();
+		File::create(format!("/tmp/pprof-{}::{name}", function!()))
+			.unwrap()
+			.write_all(&body)
+			.unwrap()
+	}
+
+	#[divan::bench]
+	fn bench_lookup(b: Bencher) {
+		let expr = Arc::new(Expression::new(r#"request.method"#).unwrap());
+		let ctx = root_context();
+		let req = ::http::Request::builder()
+			.method(Method::GET)
+			.header("x-example", "value")
+			.body(Body::empty())
+			.unwrap();
+		let mut cb = ContextBuilder::new();
+		cb.register_expression(&expr);
+		cb.with_request(&req);
+		let exec = cb.build().unwrap();
+
+		with_profiling("lookup", || {
+			b.bench(|| {
+				exec.eval(&expr);
+			});
+		})
+	}
+
+	#[divan::bench]
+	fn bench_with_response(b: Bencher) {
 		let expr = Arc::new(
-			Expression::new(r#"request.method == "GET" && request.headers["x-example"] == "value""#)
+			Expression::new(r#"response.status == 200 && response.headers["x-example"] == "value""#)
 				.unwrap(),
 		);
 		b.with_inputs(|| {
-			::http::Request::builder()
-				.method(Method::GET)
-				.uri("http://example.com")
+			::http::Response::builder()
+				.status(200)
 				.header("x-example", "value")
 				.body(Body::empty())
 				.unwrap()
 		})
 		.bench_refs(|r| {
-			let mut ec = ExpressionCall::from_expression(expr.clone());
-			ec.with_request(r);
-			ec.eval().unwrap();
+			let mut cb = ContextBuilder::new();
+			cb.register_expression(&expr);
+			cb.with_response(r);
+			let exec = cb.build()?;
+			exec.eval(&expr)
 		});
 	}
 
@@ -385,17 +552,18 @@ pub mod tests {
 	fn bench(b: Bencher) {
 		let expr = Arc::new(Expression::new(r#"1 + 2 == 3"#).unwrap());
 		b.with_inputs(|| {
-			::http::Request::builder()
-				.method(Method::GET)
-				.uri("http://example.com")
+			::http::Response::builder()
+				.status(200)
 				.header("x-example", "value")
 				.body(Body::empty())
 				.unwrap()
 		})
 		.bench_refs(|r| {
-			let mut ec = ExpressionCall::from_expression(expr.clone());
-			ec.with_request(r);
-			ec.eval().unwrap();
+			let mut cb = ContextBuilder::new();
+			cb.register_expression(&expr);
+			cb.with_response(r);
+			let exec = cb.build()?;
+			exec.eval(&expr)
 		});
 	}
 }

@@ -1,3 +1,15 @@
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::fmt::Display;
+use std::io::Cursor;
+use std::marker::PhantomData;
+use std::net::{IpAddr, SocketAddr};
+use std::num::NonZeroU16;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::{cmp, net};
+
 use anyhow::anyhow;
 use duration_str::DError::ParseError;
 use indexmap::IndexMap;
@@ -11,17 +23,6 @@ use rustls_pemfile::Item;
 use secrecy::SecretString;
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use std::fmt::Display;
-use std::io::Cursor;
-use std::marker::PhantomData;
-use std::net::{IpAddr, SocketAddr};
-use std::num::NonZeroU16;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::{cmp, net};
 use thiserror::Error;
 
 use super::agent::*;

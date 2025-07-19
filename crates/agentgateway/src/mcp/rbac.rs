@@ -1,19 +1,21 @@
-use crate::http::jwt::Claims;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
+use std::str::FromStr;
+
 use anyhow::{Context as _, Error};
-
 use lazy_static::lazy_static;
-
-use crate::*;
 use secrecy::SecretString;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use serde_json::map::Map;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
-use std::str::FromStr;
 use tracing::log;
 use x509_parser::asn1_rs::AsTaggedExplicit;
+
+use crate::cel::{ContextBuilder, Executor};
+use crate::http::jwt::Claims;
+use crate::*;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -45,7 +47,7 @@ impl PolicySet {
 pub fn se_policies<S: Serializer>(t: &PolicySet, serializer: S) -> Result<S::Ok, S::Error> {
 	let mut seq = serializer.serialize_seq(Some(t.0.len()))?;
 	for tt in &t.0 {
-		seq.serialize_element(&format!("{tt:?}"))?;
+		seq.serialize_element(tt)?;
 	}
 	seq.end()
 }
@@ -75,15 +77,24 @@ impl From<Vec<RuleSet>> for RuleSets {
 }
 
 impl RuleSets {
-	pub fn validate(&self, resource: &ResourceType, claims: &Identity) -> bool {
+	pub fn register(&self, ctx: &mut ContextBuilder) {
+		for rule_set in &self.0 {
+			for rule in &rule_set.rules.0 {
+				ctx.register_expression(rule.as_ref());
+			}
+		}
+	}
+	pub fn validate(&self, resource: &ResourceType, cel: &ContextBuilder) -> bool {
 		// If there are no rule sets, everyone has access
 		if self.0.is_empty() {
 			return true;
 		}
-		self
-			.0
-			.iter()
-			.any(|rule_set| rule_set.validate(resource, claims))
+
+		tracing::debug!("Checking RBAC for resource: {:?}", resource);
+		let Ok(exec) = cel.build_with_mcp(Some(resource)) else {
+			return false;
+		};
+		self.0.iter().any(|rule_set| rule_set.validate(&exec))
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -97,31 +108,22 @@ impl RuleSet {
 	}
 
 	// Check if the claims have access to the resource
-	pub fn validate(&self, resource: &ResourceType, claims: &Identity) -> bool {
-		self
-			.validate_internal(resource, claims)
-			.unwrap_or_else(|e| {
-				tracing::warn!("authorization failed with error: {e}");
-				// Fail closed
-				false
-			})
+	pub fn validate(&self, exec: &cel::Executor) -> bool {
+		self.validate_internal(exec).unwrap_or_else(|e| {
+			tracing::warn!("authorization failed with error: {e}");
+			// Fail closed
+			false
+		})
 	}
 
-	fn validate_internal(&self, resource: &ResourceType, claims: &Identity) -> anyhow::Result<bool> {
-		tracing::debug!("Checking RBAC for resource: {:?}", resource);
-
+	fn validate_internal(&self, exec: &Executor) -> anyhow::Result<bool> {
 		// If there are no rules, everyone has access
 		if self.rules.0.is_empty() {
 			return Ok(true);
 		}
 
 		for rule in &self.rules.0 {
-			let mut exp = cel::ExpressionCall::from_expression(rule.clone());
-			if let Some(claims) = claims.claims.as_ref() {
-				exp.with_jwt(claims)
-			}
-			exp.with_mcp(resource);
-			if exp.eval_bool() {
+			if exec.eval_bool(rule.as_ref()) {
 				return Ok(true);
 			}
 		}

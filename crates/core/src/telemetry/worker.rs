@@ -1,8 +1,10 @@
-use super::msg::Msg;
-use crossbeam_channel::{Receiver, RecvError, TryRecvError};
 use std::fmt::Debug;
 use std::io::{IoSlice, Write};
 use std::thread;
+
+use crossbeam_channel::{Receiver, RecvError, TryRecvError};
+
+use super::msg::Msg;
 
 pub(crate) struct Worker<T: Write + Send + 'static> {
 	writer: T,

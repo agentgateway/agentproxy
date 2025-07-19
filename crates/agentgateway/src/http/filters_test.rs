@@ -778,6 +778,67 @@ fn rewrite_test() {
 				uri: "http://newhost.com/hello/world".to_string(),
 			}),
 		),
+		// Test full path rewrite with query parameters - should preserve query params
+		(
+			"full_path_rewrite_with_query",
+			Input {
+				path: &match_any,
+				rewrite: &full_path_rewrite,
+				uri: "http://test.com/hello/world?param1=value1&param2=value2",
+			},
+			Some(Want {
+				uri: "http://test.com/new/path?param1=value1&param2=value2".to_string(),
+			}),
+		),
+		// Test hostname rewrite with query parameters - should preserve query params
+		(
+			"hostname_rewrite_with_query",
+			Input {
+				path: &match_any,
+				rewrite: &host_rewrite,
+				uri: "http://test.com/hello/world?param1=value1&param2=value2",
+			},
+			Some(Want {
+				uri: "http://newhost.com/hello/world?param1=value1&param2=value2".to_string(),
+			}),
+		),
+		// Test port rewrite with query parameters - should preserve query params
+		(
+			"port_rewrite_with_query",
+			Input {
+				path: &match_any,
+				rewrite: &port_rewrite,
+				uri: "http://test.com/hello/world?param1=value1&param2=value2",
+			},
+			Some(Want {
+				uri: "http://test.com:8080/hello/world?param1=value1&param2=value2".to_string(),
+			}),
+		),
+		// Test combined rewrite with query parameters - should preserve query params
+		(
+			"combined_rewrite_with_query",
+			Input {
+				path: &match_old,
+				rewrite: &combined_rewrite,
+				uri: "http://test.com/old/api/users?page=1&limit=10",
+			},
+			Some(Want {
+				uri: "http://newhost.com/new/api/users?page=1&limit=10".to_string(),
+			}),
+		),
+		// Test full path rewrite with complex query parameters
+		(
+			"full_path_rewrite_complex_query",
+			Input {
+				path: &match_any,
+				rewrite: &full_path_rewrite,
+				uri: "http://test.com/hello/world?param1=value%201&param2=value%2B2&param3=value%3D3",
+			},
+			Some(Want {
+				uri: "http://test.com/new/path?param1=value%201&param2=value%2B2&param3=value%3D3"
+					.to_string(),
+			}),
+		),
 	];
 	for (name, inp, want) in cases {
 		let mut req = request_for_uri(inp.uri);

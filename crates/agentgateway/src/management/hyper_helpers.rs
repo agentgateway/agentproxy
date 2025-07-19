@@ -15,7 +15,6 @@ use http_body_util::Full;
 use hyper::rt::Sleep;
 use hyper::server::conn::{http1, http2};
 use hyper::{Request, client};
-use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::rt::{TokioExecutor, TokioTimer};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_stream::Stream;
@@ -73,16 +72,6 @@ pub fn http2_client() -> client::conn::http2::Builder<TokioExecutor> {
 	let mut b = client::conn::http2::Builder::new(TokioExecutor::new());
 	b.timer(TokioTimer::new());
 	b
-}
-
-pub fn pooling_client<B>() -> ::hyper_util::client::legacy::Client<HttpConnector, B>
-where
-	B: http_body::Body + Send,
-	B::Data: Send,
-{
-	::hyper_util::client::legacy::Client::builder(TokioExecutor::new())
-		.timer(TokioTimer::new())
-		.build_http()
 }
 
 pub fn empty_response(code: hyper::StatusCode) -> Response {

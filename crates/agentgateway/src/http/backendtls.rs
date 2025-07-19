@@ -1,12 +1,14 @@
-use crate::transport;
-use crate::transport::tls;
-use crate::types::agent::{parse_cert, parse_key};
-use once_cell::sync::Lazy;
-use rustls::ClientConfig;
-use serde::Serializer;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use once_cell::sync::Lazy;
+use rustls::ClientConfig;
+use serde::Serializer;
+
+use crate::transport;
+use crate::transport::tls;
+use crate::types::agent::{parse_cert, parse_key};
 
 pub static SYSTEM_TRUST: Lazy<BackendTLS> =
 	Lazy::new(|| LocalBackendTLS::default().try_into().unwrap());

@@ -5,9 +5,8 @@ use std::iter::Empty;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
-use ::http::HeaderMap;
-use ::http::header;
 use ::http::uri::PathAndQuery;
+use ::http::{HeaderMap, header};
 use agent_core::drain::{DrainMode, DrainUpgrader, DrainWatcher, new};
 use agent_core::{copy, drain};
 use anyhow::anyhow;
@@ -53,7 +52,8 @@ use crate::http::{
 use crate::llm::{LLMRequest, LLMResponse, RequestResult};
 use crate::proxy::ProxyError;
 use crate::store::{BackendPolicies, Event, LLMRoutePolicies};
-use crate::telemetry::log::{AsyncLog, LogBody, RequestLog};
+use crate::telemetry::log;
+use crate::telemetry::log::{AsyncLog, DropOnLog, LogBody, RequestLog};
 use crate::telemetry::metrics::TCPLabels;
 use crate::telemetry::trc::TraceParent;
 use crate::transport::stream::{Extension, Socket, TCPConnectionInfo, TLSConnectionInfo};
@@ -239,20 +239,37 @@ impl HTTPProxy {
 	pub async fn proxy(
 		&self,
 		connection: Arc<Extension>,
-		req: ::http::Request<Incoming>,
+		mut req: ::http::Request<Incoming>,
 	) -> Response {
-		let mut log: RequestLog = Default::default();
-		let ret = self.proxy_internal(connection, req, &mut log).await;
+		let start = Instant::now();
 
-		log.error = ret.as_ref().err().map(|e| e.to_string());
+		// Copy connection level attributes into request level attributes
+		connection.copy::<TCPConnectionInfo>(req.extensions_mut());
+		connection.copy::<TLSConnectionInfo>(req.extensions_mut());
+
+		let tcp = connection
+			.get::<TCPConnectionInfo>()
+			.expect("tcp connection must be set");
+		let mut log: DropOnLog = RequestLog::new(
+			log::CelLogging::new(self.inputs.cfg.logging.clone()),
+			self.inputs.metrics.clone(),
+			start,
+			tcp.clone(),
+		)
+		.into();
+		let ret = self
+			.proxy_internal(connection, req, log.as_mut().unwrap())
+			.await;
+
+		log.with(|l| l.error = ret.as_ref().err().map(|e| e.to_string()));
 		let resp = ret.unwrap_or_else(|err| err.as_response());
 
 		// Pass the log into the body so it finishes once the stream is entirely complete.
 		// We will also record trailer info there.
-		log.status = Some(resp.status());
-		if let Some(f) = log.filter.as_mut() {
-			f.with_response(&resp);
-		}
+		log.with(|l| {
+			l.status = Some(resp.status());
+			l.cel.ctx().with_response(&resp)
+		});
 
 		resp.map(move |b| http::Body::new(LogBody::new(b, log)))
 	}
@@ -262,22 +279,7 @@ impl HTTPProxy {
 		mut req: ::http::Request<Incoming>,
 		log: &mut RequestLog,
 	) -> Result<Response, ProxyError> {
-		let start = Instant::now();
-		let tcp = connection.get::<TCPConnectionInfo>().unwrap();
-		connection.copy::<TCPConnectionInfo>(req.extensions_mut());
-		connection.copy::<TLSConnectionInfo>(req.extensions_mut());
-		log.start = Some(start);
-		log.filter = self
-			.inputs
-			.cfg
-			.logging
-			.filter
-			.clone()
-			.map(cel::ExpressionCall::from_expression);
-		log.tcp_info = Some(tcp.clone());
 		log.tls_info = connection.get::<TLSConnectionInfo>().cloned();
-		log.metrics = Some(self.inputs.metrics.clone());
-
 		let selected_listener = self.selected_listener.clone();
 		let upstream = self.inputs.upstream.clone();
 		let inputs = self.inputs.clone();
@@ -332,18 +334,24 @@ impl HTTPProxy {
 			req.extensions_mut().insert(ns.clone());
 			log.outgoing_span = Some(ns);
 		}
+		if let Some(tracer) = &log.tracer {
+			log.cel.register(tracer.fields.as_ref());
+		}
 
-		let host = http::get_host(&req)?;
-		log.host = Some(host.to_string());
+		let host = http::get_host(&req)?.to_string();
+		log.host = Some(host.clone());
 		log.method = Some(req.method().clone());
 		log.path = Some(req.uri().path().to_string());
 		log.version = Some(req.version());
-		if let Some(f) = log.filter.as_mut() {
-			f.with_request(&req);
+		let needs_body = log.cel.ctx().with_request(&req);
+		if needs_body {
+			if let Ok(body) = crate::http::inspect_body(req.body_mut()).await {
+				log.cel.ctx().with_request_body(body);
+			}
 		}
 
 		let selected_listener = selected_listener
-			.or_else(|| listeners.best_match(host))
+			.or_else(|| listeners.best_match(&host))
 			.ok_or(ProxyError::ListenerNotFound)?;
 		log.gateway_name = Some(selected_listener.gateway_name.clone());
 		log.listener_name = Some(selected_listener.name.clone());
@@ -556,7 +564,7 @@ impl HTTPProxy {
 
 		// Setup timeout
 		let (call, body_timeout) = if let Some(timeout) = timeout {
-			let deadline = tokio::time::Instant::from_std(log.start.unwrap() + timeout);
+			let deadline = tokio::time::Instant::from_std(log.start + timeout);
 			let fut = tokio::time::timeout_at(deadline, call);
 			(fut, http::timeout::BodyTimeout::Deadline(deadline))
 		} else {

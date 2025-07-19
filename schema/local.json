@@ -97,6 +97,7 @@
                                       "minimum": 0
                                     }
                                   },
+                                  "additionalProperties": false,
                                   "required": [
                                     "name",
                                     "port"
@@ -160,7 +161,8 @@
                               "type": "object",
                               "properties": {
                                 "dynamic": {
-                                  "type": "object"
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "required": [
@@ -502,7 +504,8 @@
                                 "ai"
                               ]
                             }
-                          ]
+                          ],
+                          "unevaluatedProperties": false
                         }
                       },
                       "hostnames": {
@@ -568,18 +571,7 @@
                               }
                             },
                             "method": {
-                              "type": [
-                                "object",
-                                "null"
-                              ],
-                              "properties": {
-                                "method": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "method"
-                              ]
+                              "type": "string"
                             },
                             "path": {
                               "oneOf": [
@@ -695,13 +687,17 @@
                         ],
                         "properties": {
                           "a2a": {
+                            "description": "Mark this traffic as A2A to enable A2A processing and telemetry.",
                             "type": [
                               "object",
                               "null"
                             ]
                           },
-                          "ai": true,
+                          "ai": {
+                            "description": "Mark this as LLM traffic to enable LLM processing."
+                          },
                           "backendAuth": {
+                            "description": "Authenticate to the backend.",
                             "anyOf": [
                               {
                                 "oneOf": [
@@ -776,6 +772,7 @@
                             ]
                           },
                           "backendTLS": {
+                            "description": "Send TLS to the backend.",
                             "type": [
                               "object",
                               "null"
@@ -811,6 +808,7 @@
                             "additionalProperties": false
                           },
                           "cors": {
+                            "description": "Handle CORS preflight requests and append configured CORS headers to applicable requests.",
                             "type": [
                               "object",
                               "null"
@@ -859,6 +857,7 @@
                             "additionalProperties": false
                           },
                           "directResponse": {
+                            "description": "Directly respond to the request with a static response.",
                             "type": [
                               "object",
                               "null"
@@ -889,8 +888,11 @@
                               "status"
                             ]
                           },
-                          "extAuthz": true,
+                          "extAuthz": {
+                            "description": "Authenticate incoming requests by calling an external authorization server."
+                          },
                           "jwtAuth": {
+                            "description": "Authenticate incoming JWT requests.",
                             "type": [
                               "object",
                               "null"
@@ -942,8 +944,11 @@
                               "jwks"
                             ]
                           },
-                          "localRateLimit": true,
+                          "localRateLimit": {
+                            "description": "Rate limit incoming requests. State is kept local."
+                          },
                           "mcpAuthentication": {
+                            "description": "Authentication for MCP clients.",
                             "type": [
                               "object",
                               "null"
@@ -1004,6 +1009,7 @@
                             ]
                           },
                           "mcpAuthorization": {
+                            "description": "Authorization policies for MCP access.",
                             "type": [
                               "object",
                               "null"
@@ -1020,8 +1026,11 @@
                               "rules"
                             ]
                           },
-                          "remoteRateLimit": true,
+                          "remoteRateLimit": {
+                            "description": "Rate limit incoming requests. State is managed by a remote server."
+                          },
                           "requestHeaderModifier": {
+                            "description": "Headers to be modified in the request.",
                             "type": [
                               "object",
                               "null"
@@ -1069,6 +1078,7 @@
                             "additionalProperties": false
                           },
                           "requestMirror": {
+                            "description": "Mirror incoming requests to another destination.",
                             "type": [
                               "object",
                               "null"
@@ -1110,6 +1120,7 @@
                                             "minimum": 0
                                           }
                                         },
+                                        "additionalProperties": false,
                                         "required": [
                                           "name",
                                           "port"
@@ -1185,6 +1196,7 @@
                             ]
                           },
                           "requestRedirect": {
+                            "description": "Directly respond to the request with a redirect.",
                             "type": [
                               "object",
                               "null"
@@ -1294,6 +1306,7 @@
                             "additionalProperties": false
                           },
                           "responseHeaderModifier": {
+                            "description": "Headers to be modified in the response.",
                             "type": [
                               "object",
                               "null"
@@ -1341,6 +1354,7 @@
                             "additionalProperties": false
                           },
                           "retry": {
+                            "description": "Retry matching requests.",
                             "type": [
                               "object",
                               "null"
@@ -1375,6 +1389,7 @@
                             ]
                           },
                           "timeout": {
+                            "description": "Timeout requests that exceed the configured duration.",
                             "type": [
                               "object",
                               "null"
@@ -1396,6 +1411,7 @@
                             "additionalProperties": false
                           },
                           "urlRewrite": {
+                            "description": "Modify the URL path or authority.",
                             "type": [
                               "object",
                               "null"
@@ -1551,6 +1567,7 @@
                                           "minimum": 0
                                         }
                                       },
+                                      "additionalProperties": false,
                                       "required": [
                                         "name",
                                         "port"
@@ -1621,6 +1638,7 @@
                               "minimum": 0
                             }
                           },
+                          "additionalProperties": false,
                           "required": [
                             "backend"
                           ]
@@ -1680,7 +1698,8 @@
                             },
                             "additionalProperties": false
                           }
-                        }
+                        },
+                        "additionalProperties": false
                       },
                       "ruleName": {
                         "type": [
@@ -1729,11 +1748,15 @@
         ]
       }
     },
+    "config": {
+      "default": null
+    },
     "services": {
       "default": []
     },
     "workloads": {
       "default": []
     }
-  }
+  },
+  "additionalProperties": false
 }

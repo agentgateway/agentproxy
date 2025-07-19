@@ -1,22 +1,9 @@
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::ops::IndexMut;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::http::*;
-use crate::json::{from_body, to_body};
-use crate::llm::LLMRequest;
-use crate::mcp::rbac::RuleSets;
-use crate::mcp::relay::Relay;
-use crate::mcp::{rbac, relay};
-use crate::store::{BackendPolicies, Stores};
-use crate::telemetry::log::AsyncLog;
-use crate::types::agent::{
-	BackendName, McpAuthentication, McpBackend, McpIDP, McpTarget as TypeMcpTarget, McpTargetSpec,
-	PolicyTarget, Target,
-};
-use crate::{client, json, mcp};
 use a2a_sdk::SendTaskStreamingResponseResult::Status;
 use agent_core::drain::DrainWatcher;
 use agent_core::prelude::Strng;
@@ -57,6 +44,22 @@ use tokio_util::sync::CancellationToken;
 use tower::ServiceExt;
 use tracing::warn;
 use url::form_urlencoded;
+
+use crate::cel::ContextBuilder;
+use crate::http::jwt::Claims;
+use crate::http::*;
+use crate::json::{from_body, to_body};
+use crate::llm::LLMRequest;
+use crate::mcp::rbac::RuleSets;
+use crate::mcp::relay::Relay;
+use crate::mcp::{rbac, relay};
+use crate::store::{BackendPolicies, Stores};
+use crate::telemetry::log::AsyncLog;
+use crate::types::agent::{
+	BackendName, McpAuthentication, McpBackend, McpIDP, McpTarget as TypeMcpTarget, McpTargetSpec,
+	PolicyTarget, Target,
+};
+use crate::{client, json, mcp};
 
 type SseTxs =
 	Arc<std::sync::RwLock<HashMap<SessionId, tokio::sync::mpsc::Sender<ClientJsonRpcMessage>>>>;
@@ -131,9 +134,26 @@ impl App {
 		let metrics = self.metrics.clone();
 		let sm = self.session.clone();
 		let client = self.client.clone();
+
 		// Store an empty value, we will populate each field async
 		log.store(Some(MCPInfo::default()));
 		req.extensions_mut().insert(log);
+
+		let mut ctx = ContextBuilder::new();
+		authorization_policies.register(&mut ctx);
+		let needs_body = ctx.with_request(&req);
+		if needs_body {
+			if let Ok(body) = crate::http::inspect_body(req.body_mut()).await {
+				ctx.with_request_body(body);
+			}
+		}
+		if let Some(jwt) = req.extensions().get::<Claims>() {
+			ctx.with_jwt(jwt);
+		}
+		// `response` is not valid here, since we run authz first
+		// MCP context is added later
+		req.extensions_mut().insert(Arc::new(ctx));
+
 		match (req.uri().path(), req.method(), authn) {
 			("/sse", m, _) if m == Method::GET => Self::sse_get_handler(
 				self.sse_txs.clone(),

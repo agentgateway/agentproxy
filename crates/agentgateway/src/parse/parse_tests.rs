@@ -1,13 +1,15 @@
-use super::*;
-use crate::*;
+use std::collections::HashMap;
+use std::convert::Infallible;
+
 use ::http::HeaderMap;
 use http_body::Body;
 use http_body_util::{BodyExt, Full};
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::convert::Infallible;
 use tokio_sse_codec::{Event, Frame, SseDecoder};
 use tokio_util::codec::{BytesCodec, LinesCodec};
+
+use super::*;
+use crate::*;
 
 #[tokio::test]
 async fn test_parser() {

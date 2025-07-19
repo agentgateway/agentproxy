@@ -3,18 +3,18 @@ use std::fmt;
 use std::future::Future;
 use std::time::Duration;
 
-use serde::Serialize;
-use serde_json;
-
-use super::client::Client;
-use crate::http::Method;
-use crate::http::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
-use crate::http::{Body, Response};
 use http::header::{Entry, OccupiedEntry};
-use http::{Extensions, Request as HttpRequest, Version, request::Parts};
+use http::request::Parts;
+use http::{Extensions, Request as HttpRequest, Version};
 use hyper_util::client::legacy::connect::Connect;
 use reqwest::IntoUrl;
+use serde::Serialize;
+use serde_json;
 use url::Url;
+
+use super::client::Client;
+use crate::http::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
+use crate::http::{Body, Method, Response};
 
 /// A request which can be executed with `Client::execute()`.
 pub struct Request {

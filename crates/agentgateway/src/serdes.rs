@@ -1,5 +1,7 @@
-use crate::client::Client;
-use crate::http::Body;
+use std::fmt::{Debug, Display};
+use std::path::PathBuf;
+use std::{fs, io};
+
 use anyhow::Context;
 #[cfg(feature = "schema")]
 pub use schemars::JsonSchema;
@@ -7,9 +9,9 @@ use secrecy::SecretString;
 use serde::de::DeserializeOwned;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{Debug, Display};
-use std::path::PathBuf;
-use std::{fs, io};
+
+use crate::client::Client;
+use crate::http::Body;
 
 /// Serde yaml represents things different than just as "JSON in YAML format".
 /// We don't want this. Instead, we transcode YAML via the JSON module.

@@ -7,7 +7,6 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use prometheus_client::encoding::{EncodeLabelValue, LabelValueEncoder};
-
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

@@ -134,11 +134,7 @@ impl UrlRewrite {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct DirectResponse {
 	pub body: Bytes,
-	#[serde(
-		skip_serializing_if = "is_default",
-		serialize_with = "ser_display",
-		deserialize_with = "de_parse"
-	)]
+	#[serde(with = "http_serde::status_code")]
 	#[cfg_attr(feature = "schema", schemars(with = "std::num::NonZeroU16"))]
 	pub status: StatusCode,
 }
@@ -216,7 +212,15 @@ fn rewrite_path(
 ) -> Result<http::uri::PathAndQuery, Error> {
 	match rewrite {
 		None => Ok(orig.path_and_query().ok_or(Error::InvalidURI).cloned()?),
-		Some(PathRedirect::Full(r)) => Ok(r.as_str().try_into()?),
+		Some(PathRedirect::Full(r)) => {
+			let mut new_path = r.to_string();
+			// Preserve query parameters from the original URI
+			if let Some(q) = orig.query() {
+				new_path.push('?');
+				new_path.push_str(q);
+			}
+			Ok(new_path.try_into()?)
+		},
 		Some(PathRedirect::Prefix(r)) => {
 			let PathMatch::PathPrefix(match_pfx) = path_match else {
 				return Err(Error::InvalidFilterConfiguration(
