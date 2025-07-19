@@ -15,8 +15,7 @@ if __name__ == '__main__':
         name="Calculator Agent",
         description="A calculator agent that can perform basic arithmetic operations.",
         model=model,
-        tools=[calculator],
-        callback_handler=None
+        tools=[calculator]
     )
 
     # Create A2A server (streaming enabled by default)
