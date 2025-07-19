@@ -1,5 +1,7 @@
 ## Strands Agent and AgentGateway
 
+Example of [Strands Agent](https://strandsagents.com/) and A2A protocol usig AgentGateway
+
 ## Set up the agentgateway
 
 Create an agentgateway that proxies requests to the strands agent
