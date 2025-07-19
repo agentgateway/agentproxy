@@ -100,7 +100,7 @@ Create an agentgateway that proxies requests to the strands agent
     }
     ```
 
-4. In the tab where the agentgateway is running, verify that you see request logs from your client query to the Hello World agent, such as the following example.
+4. In the tab where the agentgateway is running, verify that you see request logs from your client query to the Calculator agent, such as the following example.
 
    ```text
    2025-07-10T18:10:46.547567Z	info	request	gateway=bind/3000 listener=listener0 route=route0 endpoint=localhost:9999 src.addr=[::1]:59257 http.method=POST http.host=localhost http.path=/ http.version=HTTP/1.1 http.status=200 a2a.method=message/stream duration=3ms
