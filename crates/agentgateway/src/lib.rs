@@ -75,6 +75,10 @@ pub struct RawConfig {
 
 	// Admin UI address in the format "ip:port"
 	admin_addr: Option<String>,
+	// Stats/metrics server address in the format "ip:port"
+	stats_addr: Option<String>,
+	// Readiness probe server address in the format "ip:port"
+	readiness_addr: Option<String>,
 
 	auth_token: Option<String>,
 

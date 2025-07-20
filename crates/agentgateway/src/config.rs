@@ -13,8 +13,8 @@ use crate::telemetry::log::LoggingFields;
 use crate::telemetry::trc;
 use crate::types::discovery::Identity;
 use crate::{
-	Address, Config, ConfigSource, NestedRawConfig, RawConfig, XDSConfig, cel, client, serdes,
-	telemetry,
+	cel, client, serdes, telemetry, Address, Config, ConfigSource, NestedRawConfig, RawConfig,
+	XDSConfig,
 };
 
 pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Result<Config> {
@@ -156,12 +156,24 @@ pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Resu
 		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
 		.transpose()?
 		.unwrap_or(Address::Localhost(ipv6_localhost_enabled, 15000));
+	// Parse stats_addr from environment variable or config file
+	let stats_addr = parse::<String>("STATS_ADDR")?
+		.or(raw.stats_addr)
+		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
+		.transpose()?
+		.unwrap_or(Address::SocketAddr(SocketAddr::new(bind_wildcard, 15020)));
+	// Parse readiness_addr from environment variable or config file
+	let readiness_addr = parse::<String>("READINESS_ADDR")?
+		.or(raw.readiness_addr)
+		.map(|addr| Address::new(ipv6_localhost_enabled, &addr))
+		.transpose()?
+		.unwrap_or(Address::SocketAddr(SocketAddr::new(bind_wildcard, 15021)));
 
 	Ok(crate::Config {
 		network: network.into(),
 		admin_addr,
-		stats_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15020)),
-		readiness_addr: Address::SocketAddr(SocketAddr::new(bind_wildcard, 15021)),
+		stats_addr,
+		readiness_addr,
 		self_addr,
 		xds,
 		ca,
