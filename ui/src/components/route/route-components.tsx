@@ -390,23 +390,31 @@ export const AddRouteDialog: React.FC<AddRouteDialogProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="listener-select">Target Listener *</Label>
+            {!selectedListener && (
+              <p className="text-sm text-muted-foreground">
+                Please select a target listener for your route:
+              </p>
+            )}
             <div className="grid gap-2">
-              {availableListeners.map((item, index) => (
-                <Button
-                  key={index}
-                  variant={
-                    selectedListener?.listener.name === item.listener.name ? "default" : "outline"
-                  }
-                  onClick={() => {
-                    setSelectedListener(item);
-                  }}
-                  className="justify-start"
-                >
-                  <Network className="mr-2 h-4 w-4" />
-                  {item.listener.name || `Unnamed`} (Port {item.bind.port}) -{" "}
-                  {item.listener.protocol || "HTTP"}
-                </Button>
-              ))}
+              {availableListeners.map((item, index) => {
+                const isSelected = selectedListener && 
+                  (selectedListener.listener.name || 'unnamed') === (item.listener.name || 'unnamed') &&
+                  selectedListener.bind.port === item.bind.port;
+                return (
+                  <Button
+                    key={`${item.bind.port}-${item.listener.name || 'unnamed'}`}
+                    variant={isSelected ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedListener(item);
+                    }}
+                    className="justify-start"
+                  >
+                    <Network className="mr-2 h-4 w-4" />
+                    {item.listener.name || `Unnamed`} (Port {item.bind.port}) -{" "}
+                    {item.listener.protocol || "HTTP"}
+                  </Button>
+                );
+              })}
             </div>
           </div>
 

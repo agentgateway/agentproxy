@@ -10,6 +10,7 @@ import {
   Network,
   FileText,
   ArrowRight,
+  Users,
 } from "lucide-react";
 
 export type PolicyType =
@@ -29,7 +30,8 @@ export type PolicyType =
   | "urlRewrite"
   | "directResponse"
   | "extAuthz"
-  | "ai";
+  | "ai"
+  | "a2a";
 
 export interface PolicyTypeInfo {
   name: string;
@@ -138,6 +140,12 @@ export const POLICY_TYPES: Record<PolicyType, PolicyTypeInfo> = {
     name: "AI Policy",
     icon: Zap,
     description: "AI/LLM policy configuration",
+    httpOnly: true,
+  },
+  a2a: {
+    name: "Agent-to-Agent",
+    icon: Users,
+    description: "Mark this traffic as A2A to enable A2A processing and telemetry",
     httpOnly: true,
   },
 };

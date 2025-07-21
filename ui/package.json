@@ -24,6 +24,7 @@
     "test:setup-dirs:clean": "node ../scripts/setup-test-directories.js --clean"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^0.2.4",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "@radix-ui/react-accordion": "^1.2.8",
     "@radix-ui/react-checkbox": "^1.1.5",

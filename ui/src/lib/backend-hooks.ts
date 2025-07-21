@@ -10,6 +10,7 @@ import {
   parseUrl,
   validateBackendForm,
   createBackendFromForm,
+  getAvailableRoutes,
 } from "./backend-utils";
 
 export interface BackendWithContext {
@@ -94,8 +95,21 @@ export const useBackendFormState = () => {
   const [backendForm, setBackendForm] = useState(DEFAULT_BACKEND_FORM);
   const [selectedBackendType, setSelectedBackendType] = useState<string>("mcp");
 
-  const resetBackendForm = () => {
-    setBackendForm(DEFAULT_BACKEND_FORM);
+  const resetBackendForm = (availableBinds?: Bind[]) => {
+    const formWithDefaults = { ...DEFAULT_BACKEND_FORM };
+
+    // Auto-select the first available route if any exist
+    if (availableBinds && availableBinds.length > 0) {
+      const availableRoutes = getAvailableRoutes(availableBinds);
+      if (availableRoutes.length > 0) {
+        const firstRoute = availableRoutes[0];
+        formWithDefaults.selectedBindPort = firstRoute.bindPort.toString();
+        formWithDefaults.selectedListenerName = firstRoute.listenerName;
+        formWithDefaults.selectedRouteIndex = firstRoute.routeIndex.toString();
+      }
+    }
+    
+    setBackendForm(formWithDefaults);
     setSelectedBackendType("mcp");
   };
 
@@ -227,7 +241,7 @@ export const useBackendOperations = () => {
         ? editingBackend.routeIndex
         : parseInt(form.selectedRouteIndex);
       const listenerName = editingBackend
-        ? editingBackend.listener.name
+        ? editingBackend.listener.name || "unnamed"
         : form.selectedListenerName;
 
       // Find the target bind and route

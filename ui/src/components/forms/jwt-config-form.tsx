@@ -18,14 +18,25 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
   const [config, setConfig] = useState(() => {
     // Initialize with existing JWT config if available
     const existingJwt = listener?.routes?.[0]?.policies?.jwtAuth;
+    
+    const getJwksInfo = (jwks: any) => {
+      if (typeof jwks === "object" && jwks !== null) {
+        if ("file" in jwks) {
+          return { localJwksPath: jwks.file, remoteJwksUrl: "", jwksSource: "local" as const };
+        } else if ("url" in jwks) {
+          return { localJwksPath: "", remoteJwksUrl: jwks.url, jwksSource: "remote" as const };
+        }
+      }
+      // Default to remote URL structure
+      return { localJwksPath: "", remoteJwksUrl: "", jwksSource: "remote" as const };
+    };
+    
+    const jwksInfo = getJwksInfo(existingJwt?.jwks);
+    
     return {
       issuer: existingJwt?.issuer || "",
       audience: existingJwt?.audiences?.join(", ") || "",
-      localJwksPath: typeof existingJwt?.jwks === "object" ? existingJwt.jwks.file : "",
-      remoteJwksUrl: typeof existingJwt?.jwks === "string" ? existingJwt.jwks : "",
-      jwksSource: (typeof existingJwt?.jwks === "object" ? "local" : "remote") as
-        | "local"
-        | "remote",
+      ...jwksInfo,
     };
   });
 
@@ -60,7 +71,7 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
         .split(",")
         .map((a) => a.trim())
         .filter((a) => a),
-      jwks: config.jwksSource === "local" ? { file: config.localJwksPath } : config.remoteJwksUrl,
+      jwks: config.jwksSource === "local" ? { file: config.localJwksPath } : { url: config.remoteJwksUrl },
     };
 
     // Apply JWT auth to all routes (or create a default route if none exist)

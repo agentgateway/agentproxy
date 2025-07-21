@@ -1,7 +1,7 @@
 "use client";
 
 import { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
-import { AgentSkill } from "@/lib/a2a-schema";
+import type { AgentSkill } from "@a2a-js/sdk";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,

@@ -12,8 +12,14 @@ import {
   Tool as McpTool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { A2AClient, RpcError } from "@/lib/a2a-client";
-import { AgentSkill, Task, TaskSendParams, Message } from "@/lib/a2a-schema";
+import { A2AClient } from "@a2a-js/sdk/client";
+import type { 
+  AgentSkill, 
+  Task, 
+  Message,
+  MessageSendParams,
+  AgentCard 
+} from "@a2a-js/sdk";
 import { useServer } from "@/lib/server-context";
 import { Bind, Listener, Route, Backend, ListenerProtocol } from "@/lib/types";
 import { toast } from "sonner";
@@ -43,6 +49,7 @@ import {
   CheckCircle,
   AlertCircle,
   Info,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
@@ -217,6 +224,7 @@ export default function PlaygroundPage() {
 
             const hostnames = route.hostnames?.join(", ") || "";
             const backendCount = route.backends?.length || 0;
+            const hasA2aPolicy = route.policies?.a2a;
             const backendTypes =
               route.backends
                 ?.map((b) => {
@@ -229,7 +237,8 @@ export default function PlaygroundPage() {
                 })
                 .join(", ") || "";
 
-            const routeDescription = `${routePattern}${hostnames ? ` • ${hostnames}` : ""} • ${backendCount} backend${backendCount !== 1 ? "s" : ""}${backendTypes ? ` (${backendTypes})` : ""}`;
+            const policyInfo = hasA2aPolicy ? "A2A Policy" : "";
+            const routeDescription = `${routePattern}${hostnames ? ` • ${hostnames}` : ""} • ${backendCount} backend${backendCount !== 1 ? "s" : ""}${backendTypes ? ` (${backendTypes})` : ""}${policyInfo}`;
 
             extractedRoutes.push({
               bindPort: bind.port,
@@ -257,6 +266,11 @@ export default function PlaygroundPage() {
 
   // Determine backend type of selected route
   const getRouteBackendType = (route: RouteInfo): "mcp" | "a2a" | "http" => {
+    // Check if route has A2A policy first - this takes precedence
+    if (route.route.policies?.a2a) {
+      return "a2a";
+    }
+
     if (!route.route.backends || route.route.backends.length === 0) return "http";
 
     const backend = route.route.backends[0]; // Use first backend to determine type
@@ -304,10 +318,13 @@ export default function PlaygroundPage() {
   };
 
   const handleRouteSelect = (routeInfo: RouteInfo) => {
-    // Don't allow selection of routes with no backends
-    if (!routeInfo.route.backends || routeInfo.route.backends.length === 0) {
+    // Don't allow selection of routes with no backends unless they have A2A policy
+    const hasBackends = routeInfo.route.backends && routeInfo.route.backends.length > 0;
+    const hasA2aPolicy = routeInfo.route.policies?.a2a;
+    
+    if (!hasBackends && !hasA2aPolicy) {
       toast.error(
-        "Cannot test route without backends. Please configure at least one backend for this route."
+        "Cannot test route without backends or A2A policy. Please configure at least one backend or enable A2A policy for this route."
       );
       return;
     }
@@ -429,24 +446,39 @@ export default function PlaygroundPage() {
 
     try {
       if (backendType === "mcp") {
-        // Connect to MCP endpoint
         setConnectionState((prev) => ({ ...prev, connectionType: "mcp" }));
-
-        const headers: Record<string, string> = {};
-        if (connectionState.authToken) {
-          headers["Authorization"] = `Bearer ${connectionState.authToken}`;
-        }
 
         const client = new McpClient(
           { name: "agentgateway-dashboard", version: "0.1.0" },
           { capabilities: {} }
         );
 
-        const transport = new McpSseTransport(new URL("/sse", selectedRoute.endpoint), {
+        const headers: Record<string, string> = {
+          "Accept": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "mcp-protocol-version": "2024-11-05",
+        };
+        
+        // Only add auth header if token is provided and not empty
+        if (connectionState.authToken && connectionState.authToken.trim()) {
+          headers["Authorization"] = `Bearer ${connectionState.authToken}`;
+        }
+
+        const sseUrl = selectedRoute.endpoint.endsWith('/') ? `${selectedRoute.endpoint}sse` : `${selectedRoute.endpoint}/sse`;
+        const transport = new McpSseTransport(new URL(sseUrl), {
           eventSourceInit: {
-            fetch: (url, init) => fetch(url, { ...init, headers: headers as HeadersInit }),
+            fetch: (url, init) => {
+              return fetch(url, { 
+                ...init, 
+                headers: headers as HeadersInit,
+              });
+            },
           },
-          requestInit: { headers: headers as HeadersInit },
+          requestInit: { 
+            headers: headers as HeadersInit,
+            credentials: 'omit',
+            mode: 'cors'
+          },
         });
 
         await client.connect(transport);
@@ -463,35 +495,103 @@ export default function PlaygroundPage() {
         setConnectionState((prev) => ({ ...prev, connectionType: "a2a" }));
         const connectUrl = selectedRoute.endpoint;
 
-        const client = new A2AClient(
-          connectUrl,
-          connectionState.authToken
-            ? { Authorization: `Bearer ${connectionState.authToken}` }
-            : undefined
-        );
-        // Note: A2A skills would be loaded here based on actual A2A API
-        setA2aState((prev) => ({ ...prev, client, skills: [] }));
+        const client = new A2AClient(connectUrl);
+
+        setA2aState((prev) => ({ ...prev, client }));
         setConnectionState((prev) => ({ ...prev, isConnected: true }));
         toast.success("Connected to A2A endpoint");
+
+        // Load A2A capabilities
+        setUiState((prev) => ({ ...prev, isLoadingCapabilities: true }));
+        try {
+          // Fetch the agent card to get available skills and capabilities
+          const baseUrl = connectUrl.endsWith('/') ? connectUrl.slice(0, -1) : connectUrl;
+          const agentCardUrl = `${baseUrl}/.well-known/agent.json`;
+          const response = await fetch(agentCardUrl);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const agentCard: AgentCard = await response.json();
+          
+          // Extract skills from the agent card
+          const skills = agentCard.skills || [];
+          
+          setA2aState((prev) => ({ ...prev, skills }));
+          toast.success(`Loaded A2A agent: ${agentCard.name} with ${skills.length} skill${skills.length !== 1 ? 's' : ''}`);
+        } catch (error: any) {
+          console.error("Failed to load A2A capabilities:", error);
+          // Don't fail the connection, just continue without skills
+          setA2aState((prev) => ({ ...prev, skills: [] }));
+          
+          // Provide specific guidance for CORS errors
+          let errorMessage = "Unknown error loading agent card";
+          if (error instanceof Error) {
+            if (error.message.includes("CORS") || error.message.includes("Access-Control-Allow-Origin")) {
+              errorMessage = "CORS error - A2A endpoint needs to allow cross-origin requests";
+            } else if (error.message.includes("NetworkError") || error.message.includes("Failed to fetch")) {
+              errorMessage = "Network error - check if A2A endpoint is reachable and allows CORS";
+            } else {
+              errorMessage = error.message;
+            }
+          }
+          
+          toast.warning(`Connected to A2A endpoint but couldn't load agent card: ${errorMessage}`);
+        }
       }
     } catch (error: any) {
       console.error("Failed to connect:", error);
+      console.error("Error details:", {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack,
+        cause: error?.cause
+      });
+      
       const errorMessage =
-        error instanceof RpcError || error instanceof McpError || error instanceof Error
+        error instanceof McpError || error instanceof Error
           ? error.message
           : "Unknown connection error";
 
-      if (errorMessage.includes("401") || (error instanceof RpcError && error.code === 401)) {
-        toast.error("Unauthorized: Check bearer token");
+      // Enhanced error detection and messaging
+      if (errorMessage.includes("401") || (error?.code === 401)) {
+        toast.error("❌ Unauthorized (401): Check bearer token or remove it if not needed");
+      } else if (errorMessage.includes("406") || (error?.code === 406)) {
+        toast.error("❌ Not Acceptable (406): Server rejected request headers - check CORS configuration");
       } else if (
         errorMessage.includes("Not Found") ||
-        (error instanceof Error && error.message.includes("404"))
+        errorMessage.includes("404") ||
+        (error?.code === 404)
       ) {
-        toast.error(`Connection failed: Endpoint or target not found (${errorMessage})`);
-      } else if (errorMessage.includes("Failed to fetch")) {
-        toast.error("Connection failed: Server unreachable or refused connection.");
+        toast.error(`❌ Not Found (404): Endpoint '${selectedRoute?.endpoint || 'unknown'}' not found`);
+      } else if (
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("ERR_NETWORK") ||
+        error?.name === "TypeError"
+      ) {
+        // Enhanced CORS/Network error detection
+        let detailedMessage = "❌ Connection Failed - Possible causes:\n";
+        detailedMessage += "• CORS: Server needs 'Access-Control-Allow-Origin' header\n";
+        detailedMessage += "• Network: Server may be down or unreachable\n";
+        detailedMessage += "• Headers: Missing required headers (Accept, mcp-protocol-version)\n";
+        detailedMessage += `• URL: Check if '${selectedRoute?.endpoint || 'unknown'}/sse' is correct\n`;
+        detailedMessage += "• Config: Verify agentgateway is running with correct config";
+        
+        console.error("CORS/Network error details:", {
+          url: `${selectedRoute?.endpoint || 'unknown'}/sse`,
+          headers: error?.headers,
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        toast.error(detailedMessage, { duration: 8000 });
+      } else if (errorMessage.includes("CORS") || errorMessage.includes("Access-Control")) {
+        toast.error(`❌ CORS Error: ${errorMessage}\n• Add '${window.location.origin}' to CORS allowOrigins\n• Check CORS headers in agentgateway config`, { duration: 6000 });
       } else {
-        toast.error(`Connection failed: ${errorMessage}`);
+        toast.error(`❌ Connection failed: ${errorMessage}`);
       }
       resetFullStateAfterDisconnect();
     } finally {
@@ -618,21 +718,21 @@ export default function PlaygroundPage() {
     try {
       const message: Message = {
         role: "user",
-        parts: [{ type: "text", text: a2aState.message }],
+        parts: [{ kind: "text", text: a2aState.message }],
+        kind: "message",
+        messageId: uuidv4(),
       };
 
-      const params: TaskSendParams = {
-        id: uuidv4(),
+      const params: MessageSendParams = {
         message: message,
       };
 
-      const taskResult = await a2aState.client.sendTask(params);
+      const taskResult = await a2aState.client.sendMessage(params);
       setA2aState((prev) => ({ ...prev, response: taskResult }));
       toast.success(`Task sent to agent using skill ${a2aState.selectedSkill?.name}.`);
     } catch (error: any) {
       console.error("Failed to run A2A skill:", error);
-      const message =
-        error instanceof RpcError ? `Error ${error.code}: ${error.message}` : "Failed to send task";
+      const message = error instanceof Error ? `Error: ${error.message}` : "Failed to send task";
       setA2aState((prev) => ({ ...prev, response: { error: message, details: error } }));
       toast.error(message);
     } finally {
@@ -760,6 +860,7 @@ export default function PlaygroundPage() {
                           {routeInfos.map((routeInfo, index) => {
                             const hasBackends =
                               routeInfo.route.backends && routeInfo.route.backends.length > 0;
+                            const hasA2aPolicy = routeInfo.route.policies?.a2a;
                             const backendTypes =
                               routeInfo.route.backends?.map((b) => {
                                 if (b.mcp) return "MCP";
@@ -775,7 +876,7 @@ export default function PlaygroundPage() {
                                 key={`${groupKey}-${index}`}
                                 className={cn(
                                   "p-3 transition-colors",
-                                  !hasBackends
+                                  !hasBackends && !hasA2aPolicy
                                     ? "bg-destructive/5 cursor-not-allowed opacity-75"
                                     : selectedRoute === routeInfo
                                       ? "bg-primary/10 cursor-pointer"
@@ -787,7 +888,7 @@ export default function PlaygroundPage() {
                                   <div className="flex-1 min-w-0">
                                     {/* Route name and path */}
                                     <div className="flex items-center gap-2 mb-2">
-                                      {!hasBackends && (
+                                      {!hasBackends && !hasA2aPolicy && (
                                         <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
                                       )}
                                       <span className="font-medium">
@@ -832,36 +933,48 @@ export default function PlaygroundPage() {
                                         <div
                                           className={cn(
                                             "flex items-center gap-1",
-                                            !hasBackends && "text-destructive"
+                                            !hasBackends && !hasA2aPolicy && "text-destructive"
                                           )}
                                         >
                                           <Server className="h-3 w-3" />
                                           <span>
-                                            {routeInfo.route.backends?.length || 0} backend
-                                            {(routeInfo.route.backends?.length || 0) !== 1
-                                              ? "s"
-                                              : ""}
+                                            {hasA2aPolicy && !hasBackends
+                                              ? "A2A Traffic"
+                                              : `${routeInfo.route.backends?.length || 0} backend${
+                                                  (routeInfo.route.backends?.length || 0) !== 1
+                                                    ? "s"
+                                                    : ""
+                                                }`}
                                           </span>
                                         </div>
 
-                                        {/* Backend types */}
-                                        {hasBackends && (
+                                        {/* Backend types and A2A policy */}
+                                        {(hasBackends || hasA2aPolicy) && (
                                           <div className="flex gap-1">
-                                            {backendTypes.map((type, idx) => (
+                                            {hasA2aPolicy && (
                                               <Badge
-                                                key={idx}
-                                                variant="secondary"
-                                                className="text-xs py-0 px-1"
+                                                variant="default"
+                                                className="text-xs py-0 px-1 bg-blue-600 hover:bg-blue-700"
                                               >
-                                                {type}
+                                                A2A
                                               </Badge>
-                                            ))}
+                                            )}
+                                            {hasBackends &&
+                                              backendTypes.map((type, idx) => (
+                                                <Badge
+                                                  key={idx}
+                                                  variant="secondary"
+                                                  className="text-xs py-0 px-1"
+                                                >
+                                                  {type}
+                                                </Badge>
+                                              ))}
                                           </div>
                                         )}
                                       </div>
 
                                       {/* Error message */}
-                                      {!hasBackends && (
+                                      {!hasBackends && !hasA2aPolicy && (
                                         <div className="text-destructive text-xs mt-1 flex items-center gap-1">
                                           <AlertCircle className="h-3 w-3" />
                                           <span>Cannot test - no backends configured</span>
@@ -870,7 +983,7 @@ export default function PlaygroundPage() {
                                     </div>
                                   </div>
 
-                                  {hasBackends && (
+                                  {(hasBackends || hasA2aPolicy) && (
                                     <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                   )}
                                 </div>
@@ -1114,6 +1227,8 @@ export default function PlaygroundPage() {
                                       return { name: "External Auth", icon: Shield };
                                     case "ai":
                                       return { name: "AI Policy", icon: Settings };
+                                    case "a2a":
+                                      return { name: "A2A", icon: Users };
                                     default:
                                       return { name: type, icon: Settings };
                                   }

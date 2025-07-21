@@ -69,10 +69,13 @@ export function PolicyStep({ onNext, onPrevious, config, onConfigChange }: Polic
 
             // Add JWT Auth
             if (enableJwt) {
+              // Detect if JWKS is a URL or file path
+              const isJwksUrl = jwtJwks.trim().startsWith("http://") || jwtJwks.trim().startsWith("https://");
+              
               const jwtAuth: JwtAuth = {
                 issuer: jwtIssuer,
                 audiences: jwtAudiences.split(",").map((a) => a.trim()),
-                jwks: jwtJwks,
+                jwks: isJwksUrl ? { url: jwtJwks } : { file: jwtJwks },
               };
               policies.jwtAuth = jwtAuth;
             }

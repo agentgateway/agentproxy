@@ -192,7 +192,7 @@ export interface BackendAuth {
 export interface JwtAuth {
   issuer: string;
   audiences: string[];
-  jwks: string | { file: string };
+  jwks: { url: string } | { file: string };
 }
 
 export interface TimeoutPolicy {

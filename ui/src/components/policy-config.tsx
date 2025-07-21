@@ -54,10 +54,9 @@ import {
   renderRequestRedirectForm,
   renderUrlRewriteForm,
   renderAiForm,
+  renderA2aForm,
 } from "@/components/policy/form-renderers";
-import { ensurePort } from "@/lib/policy-utils";
-import { ArrayInput } from "@/components/policy/form-components";
-import { POLICY_TYPES, PolicyType, PolicyTypeInfo } from "@/lib/policy-constants";
+import { POLICY_TYPES, PolicyType } from "@/lib/policy-constants";
 import { getDefaultPolicyData } from "@/lib/policy-defaults";
 
 interface RouteWithContext {
@@ -166,7 +165,7 @@ export function PolicyConfig() {
       if (routeType === "http") return !info.tcpOnly;
       if (routeType === "tcp") return !info.httpOnly;
       return true;
-    });
+    }).sort((a, b) => a[1].name.localeCompare(b[1].name));
   };
 
   const hasPolicyType = (routeContext: RouteWithContext, type: PolicyType) => {
@@ -631,6 +630,9 @@ function renderPolicyForm(type: PolicyType, data: any, onChange: (data: any) => 
 
     case "ai":
       return renderAiForm({ data, onChange });
+
+    case "a2a":
+      return renderA2aForm({ data, onChange });
 
     default:
       return (

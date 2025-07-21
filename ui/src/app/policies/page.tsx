@@ -32,7 +32,7 @@ export default function PoliciesPage() {
     }
 
     // Traffic policies
-    if (policies.localRateLimit || policies.remoteRateLimit || policies.timeout || policies.retry) {
+    if (policies.localRateLimit || policies.remoteRateLimit || policies.timeout || policies.retry || policies.a2a) {
       categories.add("traffic");
     }
 

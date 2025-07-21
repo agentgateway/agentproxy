@@ -27,6 +27,29 @@ interface FormRendererProps {
 }
 
 export function renderJwtAuthForm({ data, onChange }: FormRendererProps) {
+  const getCurrentJwksValue = () => {
+    if (typeof data.jwks === "object") {
+      return data.jwks.file || data.jwks.url || "";
+    }
+    return data.jwks || "";
+  };
+
+  const handleJwksChange = (value: string) => {
+    if (!value.trim()) {
+      onChange({ ...data, jwks: { url: "" } });
+      return;
+    }
+    
+    // Detect if it's a URL (starts with http/https) or a file path
+    const isUrl = value.trim().startsWith("http://") || value.trim().startsWith("https://");
+    
+    if (isUrl) {
+      onChange({ ...data, jwks: { url: value } });
+    } else {
+      onChange({ ...data, jwks: { file: value } });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -49,10 +72,13 @@ export function renderJwtAuthForm({ data, onChange }: FormRendererProps) {
         <Label htmlFor="jwks">JWKS URL or File Path *</Label>
         <Input
           id="jwks"
-          value={typeof data.jwks === "object" ? data.jwks.file : data.jwks || ""}
-          onChange={(e) => onChange({ ...data, jwks: e.target.value })}
+          value={getCurrentJwksValue()}
+          onChange={(e) => handleJwksChange(e.target.value)}
           placeholder="https://example.auth0.com/.well-known/jwks.json"
         />
+        <p className="text-xs text-muted-foreground">
+          Enter a URL (https://...) for remote JWKS or a file path for local JWKS
+        </p>
       </div>
     </div>
   );
@@ -1391,6 +1417,31 @@ export function renderAiForm({ data, onChange }: FormRendererProps) {
             />
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+export function renderA2aForm({ data, onChange }: FormRendererProps) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-muted/50 border rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
+            <span className="text-primary text-xs font-semibold">i</span>
+          </div>
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Agent-to-Agent Policy</h4>
+            <p className="text-sm text-muted-foreground">
+              This policy marks traffic as Agent-to-Agent (A2A) to enable A2A processing and telemetry. 
+              No additional configuration is required - simply enabling this policy will activate A2A features for this route.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Use this policy when you want to enable specialized handling for agent-to-agent communications, 
+              including enhanced telemetry, logging, and processing optimizations.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

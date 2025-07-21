@@ -37,11 +37,11 @@ $ uv run hosts/cli --agent http://localhost:3000
 
 Agentgateway will proxy the requests and do a few things.
 
-First, we can directly send a request to agentgateway to the [agent card](https://www.agentcard.net/) endpoint.
+First, we can directly send a request to agentgateway to the [agent card](http://localhost:3000/.well-known/agent.json) endpoint.
 The agent will typically do this automatically, but we will use `curl` to manually look at the card.
 
 ```bash
-$ curl localhost:3000/.well-known/agent.json | jq
+$ curl http://localhost:3000/.well-known/agent.json | jq
 {
   "description": "Just a hello world agent",
   "url": "http://localhost:3000",
@@ -53,8 +53,8 @@ You can see the `url` has been rewritten to point back to agentgateway, ensuring
 Additionally, as we send requests we can see A2A specific information in the logs:
 
 ```plain
-2025-07-03T16:56:34.379262Z     info    request gateway=bind/3000 listener=listener0 
-    route=route0 endpoint=localhost:9999 src.addr=127.0.0.1:57408 
-    http.method=POST http.host=localhost http.path=/ http.version=HTTP/1.1 http.status=200 
+2025-07-03T16:56:34.379262Z     info    request gateway=bind/3000 listener=listener0
+    route=route0 endpoint=localhost:9999 src.addr=127.0.0.1:57408
+    http.method=POST http.host=localhost http.path=/ http.version=HTTP/1.1 http.status=200
     a2a.method=message/stream duration=2ms
 ```

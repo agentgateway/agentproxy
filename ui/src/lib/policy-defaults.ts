@@ -6,7 +6,7 @@ export function getDefaultPolicyData(type: PolicyType) {
       return {
         issuer: "",
         audiences: [],
-        jwks: "",
+        jwks: { url: "" },
       };
     case "mcpAuthentication":
       return {
@@ -93,6 +93,8 @@ export function getDefaultPolicyData(type: PolicyType) {
         hostOverride: null,
         promptGuard: null,
       };
+    case "a2a":
+      return {};
     default:
       return {};
   }

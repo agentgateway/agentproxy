@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
-import { AgentSkill } from "@/lib/a2a-schema";
+import type { AgentSkill } from "@a2a-js/sdk";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
