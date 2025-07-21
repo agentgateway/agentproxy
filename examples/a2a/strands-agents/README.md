@@ -1,6 +1,6 @@
 ## Strands Agent and AgentGateway
 
-Example of [Strands Agent](https://strandsagents.com/) and A2A protocol usig AgentGateway
+Example of [Strands Agent](https://strandsagents.com/) and A2A protocol using agentgateway.
 
 ## Set up the agentgateway
 
