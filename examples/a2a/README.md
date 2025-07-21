@@ -37,7 +37,7 @@ $ uv run hosts/cli --agent http://localhost:3000
 
 Agentgateway will proxy the requests and do a few things.
 
-First, we can directly send a request to agentgateway to the [agent card](https://www.agentcard.net/) endpoint.
+First, we can directly send a request to agentgateway to the agent card endpoint.
 The agent will typically do this automatically, but we will use `curl` to manually look at the card.
 
 ```bash
