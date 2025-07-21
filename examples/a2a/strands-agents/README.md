@@ -65,10 +65,10 @@ Create an agentgateway that proxies requests to the strands agent
 
     Type a sample message, such as `10 times 10`, and then send the message by pressing enter.
 
-3. In another terminal tab, manually send a request to the [agent card endpoint](https://www.agentcard.net/) through agentgateway.
+3. In another terminal tab, manually send a request to the [agent card endpoint](http://localhost:3000/.well-known/agent.json) through agentgateway.
 
    ```sh
-   curl -s localhost:3000/.well-known/agent.json | jq
+   curl -s http://localhost:3000/.well-known/agent.json | jq
    ```
 
    Example output: Notice that the `url` field is rewritten to point to the agentgateway.
