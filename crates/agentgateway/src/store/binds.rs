@@ -21,8 +21,8 @@ use crate::types::agent::{
 use crate::types::discovery::{NamespacedHostname, Service, Workload};
 use crate::types::proto::agent::resource::Kind as XdsKind;
 use crate::types::proto::agent::{
-	Backend as XdsBackend, Bind as XdsBind, Listener as XdsListener, Resource as ADPResource,
-	Route as XdsRoute,
+	Backend as XdsBackend, Bind as XdsBind, Listener as XdsListener, Policy as XdsPolicy,
+	Resource as ADPResource, Route as XdsRoute,
 };
 use crate::*;
 
@@ -411,7 +411,6 @@ impl Store {
 	}
 
 	pub fn insert_backend(&mut self, b: Backend) {
-		// TODO: handle update
 		let name = b.name();
 		let arc = Arc::new(b);
 		self.backends_by_name.insert(name, arc);
@@ -523,6 +522,11 @@ impl Store {
 	fn insert_xds_backend(&mut self, raw: XdsBackend) -> anyhow::Result<()> {
 		let backend: (Backend) = (&raw).try_into()?;
 		self.insert_backend(backend);
+		Ok(())
+	}
+	fn insert_xds_policy(&mut self, raw: XdsPolicy) -> anyhow::Result<()> {
+		let policy: (TargetedPolicy) = (&raw).try_into()?;
+		self.insert_policy(policy);
 		Ok(())
 	}
 }

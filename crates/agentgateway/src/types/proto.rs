@@ -47,4 +47,6 @@ pub enum ProtoError {
 	Regex(#[from] regex::Error),
 	#[error("invalid duration: {0}")]
 	Duration(#[from] prost_types::DurationError),
+	#[error("missing required field")]
+	MissingRequiredField,
 }
