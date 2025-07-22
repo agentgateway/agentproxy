@@ -145,3 +145,11 @@ declare_interior_mutable_const = "allow"
 [[bench]]
 name = "bench_tests"
 harness = false
+
+[[bench]]
+name = "integration_test"
+harness = false
+
+[[bench]]
+name = "baseline_comparison"
+harness = false

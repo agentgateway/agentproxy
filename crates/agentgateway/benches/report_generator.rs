@@ -7,7 +7,152 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::benchmark_framework::*;
+// Copy necessary types from benchmark_framework since benches are compiled separately
+use std::time::{Duration, SystemTime};
+
+/// Benchmark result with comprehensive metrics and statistical analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkResult {
+    pub name: String,
+    pub category: String,
+    pub description: String,
+    pub metrics: BenchmarkMetrics,
+    pub environment: BenchmarkEnvironment,
+    pub raw_measurements: Vec<Duration>,
+}
+
+/// Comprehensive benchmark metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkMetrics {
+    pub latency_percentiles: LatencyPercentiles,
+    pub throughput: ThroughputMetrics,
+    pub resource_usage: ResourceMetrics,
+    pub error_rates: ErrorMetrics,
+    pub statistical_analysis: StatisticalAnalysis,
+}
+
+/// Latency percentile measurements
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LatencyPercentiles {
+    pub p50: Duration,
+    pub p90: Duration,
+    pub p95: Duration,
+    pub p99: Duration,
+    pub p99_9: Duration,
+    pub mean: Duration,
+    pub min: Duration,
+    pub max: Duration,
+}
+
+/// Throughput measurements
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThroughputMetrics {
+    pub requests_per_second: f64,
+    pub bytes_per_second: f64,
+    pub connections_per_second: f64,
+}
+
+/// Resource utilization metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceMetrics {
+    pub memory_usage_mb: f64,
+    pub cpu_usage_percent: f64,
+    pub file_descriptors: u64,
+    pub network_connections: u64,
+}
+
+/// Error rate metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorMetrics {
+    pub total_requests: u64,
+    pub successful_requests: u64,
+    pub failed_requests: u64,
+    pub error_rate_percent: f64,
+    pub timeout_count: u64,
+}
+
+/// Statistical analysis results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatisticalAnalysis {
+    pub sample_count: usize,
+    pub confidence_interval_95: (Duration, Duration),
+    pub standard_deviation: Duration,
+    pub coefficient_of_variation: f64,
+    pub outliers_removed: usize,
+    pub statistical_significance: bool,
+}
+
+/// Environment information for reproducibility
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkEnvironment {
+    pub hardware: HardwareInfo,
+    pub software: SoftwareInfo,
+    pub configuration: ConfigurationInfo,
+    pub timestamp: SystemTime,
+    pub benchmark_version: String,
+}
+
+/// Hardware specification information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HardwareInfo {
+    pub cpu_model: String,
+    pub cpu_cores: usize,
+    pub memory_gb: f64,
+    pub storage_type: String,
+    pub network_interface: String,
+}
+
+/// Software environment information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SoftwareInfo {
+    pub os_name: String,
+    pub os_version: String,
+    pub rust_version: String,
+    pub cargo_version: String,
+    pub compiler_flags: Vec<String>,
+}
+
+/// Configuration information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigurationInfo {
+    pub benchmark_settings: HashMap<String, String>,
+    pub environment_variables: HashMap<String, String>,
+    pub feature_flags: Vec<String>,
+}
+
+impl HardwareInfo {
+    pub fn collect() -> Self {
+        Self {
+            cpu_model: "Unknown CPU".to_string(),
+            cpu_cores: num_cpus::get(),
+            memory_gb: 8.0, // Default estimate
+            storage_type: "Unknown".to_string(),
+            network_interface: "Unknown".to_string(),
+        }
+    }
+}
+
+impl SoftwareInfo {
+    pub fn collect() -> Self {
+        Self {
+            os_name: std::env::consts::OS.to_string(),
+            os_version: "Unknown".to_string(),
+            rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
+            cargo_version: "Unknown".to_string(),
+            compiler_flags: vec!["--release".to_string()],
+        }
+    }
+}
+
+impl ConfigurationInfo {
+    pub fn collect() -> Self {
+        Self {
+            benchmark_settings: HashMap::new(),
+            environment_variables: HashMap::new(),
+            feature_flags: vec!["internal_benches".to_string()],
+        }
+    }
+}
 
 /// Comprehensive benchmark report containing all results and analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
