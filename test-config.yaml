@@ -1,20 +1,7 @@
-# yaml-language-server: $schema=schema/local.json
 binds:
 - port: 8080
   listeners:
-  - routes:
-    - policies:
-        cors:
-          allowOrigins:
-            - "*"
-          allowHeaders:
-            - mcp-protocol-version
-            - content-type
-      backends:
-      - mcp:
-          name: default
-          targets:
-          - name: everything
-            stdio:
-              cmd: npx
-              args: ["@modelcontextprotocol/server-everything"]
+  - protocol: HTTP
+    routes:
+    - backends:
+      - host: httpbin.org:80

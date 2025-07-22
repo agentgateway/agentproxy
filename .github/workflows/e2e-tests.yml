@@ -1,0 +1,93 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+            
+      - name: Install UI dependencies
+        run: |
+          cd ui
+          npm ci
+          
+      - name: Build AgentGateway
+        run: |
+          cargo build --release --bin agentgateway
+          
+      - name: Run E2E Tests
+        run: |
+          npm run test:e2e:ci
+        env:
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-results-node-${{ matrix.node-version }}
+          path: |
+            ui/cypress/videos/
+            ui/cypress/screenshots/
+            ui/cypress/results/
+          retention-days: 7
+          
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-reports-node-${{ matrix.node-version }}
+          path: ui/cypress/reports/
+          retention-days: 7
+
+  e2e-tests-summary:
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+    
+    steps:
+      - name: Check E2E test results
+        run: |
+          if [[ "${{ needs.e2e-tests.result }}" == "success" ]]; then
+            echo "✅ All E2E tests passed successfully!"
+          else
+            echo "❌ E2E tests failed"
+            exit 1
+          fi

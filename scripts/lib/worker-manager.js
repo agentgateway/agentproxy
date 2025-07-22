@@ -112,8 +112,8 @@ const fs = require('fs');
 
 module.exports = {
   e2e: {
-    // Worker-specific test patterns
-    specPattern: [${testSpecs.split(',').map(spec => `'${spec}'`).join(', ')}],
+    // Worker-specific test patterns - ensure proper path resolution
+    specPattern: [${testSpecs.split(',').map(spec => `'${spec.trim()}'`).join(', ')}],
     
     // Base URL - same as regular tests
     baseUrl: 'http://localhost:3000/ui',

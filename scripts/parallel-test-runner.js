@@ -7,7 +7,7 @@ const { program } = require('commander');
 const ResourceMonitor = require('./lib/resource-monitor');
 const TestScheduler = require('./lib/test-scheduler');
 const WorkerManager = require('./lib/worker-manager');
-const { ensureDirectoryExists, REQUIRED_DIRECTORIES } = require('./setup-test-directories');
+const { ensureDirectoryExists, REQUIRED_DIRECTORIES } = require('./setup-test-directories.js');
 
 /**
  * Intelligent Parallel Test Runner

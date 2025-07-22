@@ -37,7 +37,7 @@ export default function SimplePage() {
   return (
     <div data-cy="dashboard-content">
       <h1>AgentGateway Dashboard</h1>
-      <p>Simple test page to verify E2E tests work</p>
+      <p>Welcome to AgentGateway - your intelligent API gateway solution.</p>
       
       {/* Dashboard Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-6">

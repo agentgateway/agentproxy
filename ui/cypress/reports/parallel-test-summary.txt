@@ -3,28 +3,28 @@ Parallel Test Execution Summary
 ===============================
 
 Execution Details:
-- Start Time: 2025-07-22T10:44:43.898Z
-- End Time: 2025-07-22T10:46:14.985Z
-- Total Duration: 91.1s
+- Start Time: 2025-07-22T12:12:39.580Z
+- End Time: 2025-07-22T12:14:44.692Z
+- Total Duration: 125.1s
 - Parallel Efficiency: 100.0%
-- Speed Improvement: 81.2%
+- Speed Improvement: 65.1%
 
 Worker Statistics:
-- Total Workers: 8
-- Successful: 8
+- Total Workers: 4
+- Successful: 4
 - Failed: 0
 - Errors: 0
 
 Test Results:
-- Total Tests: 125
-- Passed: 125
+- Total Tests: 75
+- Passed: 75
 - Failed: 0
 - Skipped: 0
 - Pass Rate: 100.0%
 
 Resource Usage:
-- Peak Memory: 10.3%
-- Average CPU: 22.2%
+- Peak Memory: 10.5%
+- Average CPU: 10.5%
 - Optimal Workers: 8
 
-Generated: 2025-07-22T10:46:14.993Z
+Generated: 2025-07-22T12:14:44.695Z
