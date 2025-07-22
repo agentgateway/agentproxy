@@ -37,7 +37,7 @@
 </div>
 <br>
 
-# Intro to Agentgateway Video
+## Intro to Agentgateway Video
 
 [![Agentgateway Intro Video](https://img.youtube.com/vi/SomP92JWPmE/hqdefault.jpg)](https://youtu.be/SomP92JWPmE)
 
@@ -51,11 +51,11 @@
 - [x] **Legacy API Support:** agentgateway can transform legacy APIs into MCP resources. Currently supports OpenAPI. (gRPC coming soon)
 <br>
 
-# Getting Started 
+## Getting Started 
 
 To get started with agentgateway, please check out the [Getting Started Guide](https://agentgateway.dev/docs/quickstart).
 
-# Documentation
+## Documentation
 
 The agentgateway documentation is available at [agentgateway.dev/docs](https://agentgateway.dev/docs/). Agentgateway has a built-in UI for you to explore agentgateway connecting agent-to-agent or agent-to-tool:
 
@@ -63,15 +63,20 @@ The agentgateway documentation is available at [agentgateway.dev/docs](https://a
   <img alt="agentgateway UI" src="img/UI-homepage.png">
 </div>
 
-# Contributing
+## Contributing
 
 For instructions on how to contribute to the agentgateway project, see the [CONTRIBUTION.md](CONTRIBUTION.md) file.
+
+## Community Meetings
+To join a community meeting, add the [agentgateway calendar](https://discord.com/channels/1357069518689534073/1357069518689534076/1397283418919796909) to your Google account. Then, you can find event details on the calendar.
+
+Recordings of the community meetings will be published on our [google drive](https://drive.google.com/drive/folders/138716fESpxLkbd_KkGrUHa6TD7OA2tHs?usp=sharing).
 
 ## Roadmap
 
 `agentgateway` is currently in active development. If you want a feature missing, open an issue in our [Github repo])(https://github.com/agentgateway/agentgateway/issues).
 
-# Contributors
+## Contributors
 
 Thanks to all contributors who are helping to make agentgateway better.
 
@@ -80,7 +85,7 @@ Thanks to all contributors who are helping to make agentgateway better.
 </a>
 
 
-## Star History
+### Star History
 
 <a href="https://www.star-history.com/#agentgateway/agentgateway&Date">
  <picture>
