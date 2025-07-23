@@ -18,6 +18,7 @@ pub mod backendtls;
 pub mod ext_authz;
 pub mod ext_proc;
 pub mod remoteratelimit;
+pub mod transformation_cel;
 
 pub type Error = axum_core::Error;
 pub type Body = axum_core::body::Body;

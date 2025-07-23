@@ -34,6 +34,8 @@ pub enum ProxyError {
 	BackendUnsupportedMirror,
 	#[error("authentication failure: {0}")]
 	JwtAuthenticationFailure(http::jwt::TokenError),
+	#[error("transformation failed")]
+	TransformationFailure,
 	#[error("service not found")]
 	ServiceNotFound,
 	#[error("invalid backend type")]
@@ -83,6 +85,7 @@ impl ProxyError {
 			ProxyError::ServiceNotFound => StatusCode::INTERNAL_SERVER_ERROR,
 			ProxyError::BackendAuthenticationFailed(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			ProxyError::InvalidBackendType => StatusCode::INTERNAL_SERVER_ERROR,
+			ProxyError::TransformationFailure => StatusCode::INTERNAL_SERVER_ERROR,
 
 			ProxyError::UpgradeFailed(_, _) => StatusCode::BAD_GATEWAY,
 

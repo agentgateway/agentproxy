@@ -993,7 +993,7 @@ pub struct TargetedPolicy {
 	pub policy: Policy,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum PolicyTarget {
@@ -1034,6 +1034,10 @@ pub enum Policy {
 	// ExtProc(),
 	// Supported targets: Gateway < Route < RouteRule; single policy allowed
 	JwtAuth(crate::http::jwt::Jwt),
+	// Supported targets: Gateway < Route < RouteRule; single policy allowed
+	// ExtProc(),
+	// Supported targets: Gateway < Route < RouteRule; single policy allowed
+	Transformation(crate::http::transformation_cel::Transformation),
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
