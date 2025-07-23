@@ -1,13 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-
-use agent_xds::{RejectedConfig, XdsUpdate};
-use futures_core::Stream;
-use itertools::Itertools;
-use serde::Serialize;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
-use tracing::{Level, instrument};
-
+use crate::cel::ContextBuilder;
 use crate::http::auth::BackendAuth;
 use crate::http::backendtls::BackendTLS;
 use crate::http::{ext_authz, remoteratelimit};
@@ -25,6 +16,16 @@ use crate::types::proto::agent::{
 	Resource as ADPResource, Route as XdsRoute,
 };
 use crate::*;
+use ::http::Request;
+use agent_xds::{RejectedConfig, XdsUpdate};
+use axum_core::body::Body;
+use futures_core::Stream;
+use itertools::Itertools;
+use serde::Serialize;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tracing::{Level, instrument};
 
 #[derive(Debug)]
 pub struct Store {
@@ -32,6 +33,7 @@ pub struct Store {
 	by_name: HashMap<BindName, Arc<Bind>>,
 
 	policies_by_name: HashMap<PolicyName, Arc<TargetedPolicy>>,
+	policies_by_target: HashMap<PolicyTarget, HashSet<PolicyName>>,
 
 	backends_by_name: HashMap<BackendName, Arc<Backend>>,
 
@@ -71,6 +73,18 @@ pub struct RoutePolicies {
 	pub remote_rate_limit: Option<remoteratelimit::RemoteRateLimit>,
 	pub jwt: Option<http::jwt::Jwt>,
 	pub ext_authz: Option<ext_authz::ExtAuthz>,
+	pub transformation: Option<http::transformation_cel::Transformation>,
+}
+
+impl RoutePolicies {
+	pub fn register_cel_expressions(&self, req: &http::Request, ctx: &mut ContextBuilder) {
+		let Some(xfm) = &self.transformation else {
+			return;
+		};
+		for expr in xfm.expressions() {
+			ctx.register_expression(expr)
+		}
+	}
 }
 
 impl From<RoutePolicies> for LLMRoutePolicies {
@@ -102,6 +116,7 @@ impl Store {
 		Self {
 			by_name: Default::default(),
 			policies_by_name: Default::default(),
+			policies_by_target: Default::default(),
 			backends_by_name: Default::default(),
 			staged_routes: Default::default(),
 			staged_listeners: Default::default(),
@@ -121,80 +136,51 @@ impl Store {
 		route: RouteName,
 		gateway: GatewayName,
 	) -> RoutePolicies {
-		let route_rule = PolicyTarget::RouteRule(route_rule);
-		let route = PolicyTarget::Route(route);
-		let gateway = PolicyTarget::Gateway(gateway);
 		// Changes we must do:
 		// * Index the store by the target
 		// * Avoid the N lookups, or at least the boilerplate, for each type
 		// Changes we may want to consider:
 		// * We do this lookup under one lock, but we will lookup backend rules and listener rules under a different
 		//   lock. This can lead to inconsistent state..
-		let local_rate_limit = self
-			// This is a terrible approach!
-			.policies_by_name
-			.values()
-			.filter_map(|p| {
-				let tgt = &p.target;
-				if !(tgt == &route || tgt == &route_rule || tgt == &gateway) {
-					return None;
-				}
-				match &p.policy {
-					Policy::LocalRateLimit(lrl) => Some(lrl.clone()),
-					_ => None,
-				}
-			})
-			.next();
-		let jwt = self
-			// This is a terrible approach!
-			.policies_by_name
-			.values()
-			.filter_map(|p| {
-				let tgt = &p.target;
-				if !(tgt == &route || tgt == &route_rule || tgt == &gateway) {
-					return None;
-				}
-				match &p.policy {
-					Policy::JwtAuth(lrl) => Some(lrl.clone()),
-					_ => None,
-				}
-			})
-			.next();
-		let ext_authz = self
-			// This is a terrible approach!
-			.policies_by_name
-			.values()
-			.filter_map(|p| {
-				let tgt = &p.target;
-				if !(tgt == &route || tgt == &route_rule || tgt == &gateway) {
-					return None;
-				}
-				match &p.policy {
-					Policy::ExtAuthz(lrl) => Some(lrl.clone()),
-					_ => None,
-				}
-			})
-			.next();
-		let remote_rate_limit = self
-			// This is a terrible approach!
-			.policies_by_name
-			.values()
-			.filter_map(|p| {
-				let tgt = &p.target;
-				if !(tgt == &route || tgt == &route_rule || tgt == &gateway) {
-					return None;
-				}
-				match &p.policy {
-					Policy::RemoteRateLimit(lrl) => Some(lrl.clone()),
-					_ => None,
-				}
-			})
-			.next();
+		let gateway = self.policies_by_target.get(&PolicyTarget::Gateway(gateway));
+		let route = self.policies_by_target.get(&PolicyTarget::Route(route));
+		let route_rule = self
+			.policies_by_target
+			.get(&PolicyTarget::RouteRule(route_rule));
+		let rules = route_rule
+			.iter()
+			.copied()
+			.flatten()
+			.chain(route.iter().copied().flatten())
+			.chain(gateway.iter().copied().flatten())
+			.filter_map(|n| self.policies_by_name.get(n))
+			.collect_vec();
+		let local_rate_limit = rules.iter().find_map(|n| match &n.policy {
+			Policy::LocalRateLimit(lrl) => Some(lrl.clone()),
+			_ => None,
+		});
+		let jwt = rules.iter().find_map(|n| match &n.policy {
+			Policy::JwtAuth(lrl) => Some(lrl.clone()),
+			_ => None,
+		});
+		let ext_authz = rules.iter().find_map(|n| match &n.policy {
+			Policy::ExtAuthz(lrl) => Some(lrl.clone()),
+			_ => None,
+		});
+		let remote_rate_limit = rules.iter().find_map(|n| match &n.policy {
+			Policy::RemoteRateLimit(lrl) => Some(lrl.clone()),
+			_ => None,
+		});
+		let transformation = rules.iter().find_map(|n| match &n.policy {
+			Policy::Transformation(lrl) => Some(lrl.clone()),
+			_ => None,
+		});
 		RoutePolicies {
 			local_rate_limit: local_rate_limit.unwrap_or_default(),
 			remote_rate_limit,
 			jwt,
 			ext_authz,
+			transformation,
 		}
 	}
 
@@ -330,7 +316,11 @@ impl Store {
         fields(bind),
     )]
 	pub fn remove_policy(&mut self, pol: PolicyName) {
-		if let Some(old) = self.policies_by_name.remove(&pol) {}
+		if let Some(old) = self.policies_by_name.remove(&pol) {
+			if let Some(o) = self.policies_by_target.get_mut(&old.target) {
+				o.remove(&pol);
+			}
+		}
 	}
 	#[instrument(
         level = Level::INFO,
@@ -423,9 +413,18 @@ impl Store {
         fields(pol=%pol.name),
     )]
 	pub fn insert_policy(&mut self, pol: TargetedPolicy) {
-		// TODO: handle update
-		let arc = Arc::new(pol);
-		self.policies_by_name.insert(arc.name.clone(), arc.clone());
+		let pol = Arc::new(pol);
+		if let Some(old) = self.policies_by_name.insert(pol.name.clone(), pol.clone()) {
+			// Remove the old target. We may add it back, though.
+			if let Some(o) = self.policies_by_target.get_mut(&old.target) {
+				o.remove(&pol.name);
+			}
+		}
+		self
+			.policies_by_target
+			.entry(pol.target.clone())
+			.or_default()
+			.insert(pol.name.clone());
 	}
 
 	pub fn insert_listener(&mut self, mut lis: Listener, bind_name: BindName) {

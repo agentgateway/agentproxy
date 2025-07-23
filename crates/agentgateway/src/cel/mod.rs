@@ -37,11 +37,11 @@ impl From<Box<dyn std::error::Error>> for Error {
 	}
 }
 
-const REQUEST_ATTRIBUTE: &str = "request";
-const REQUEST_BODY_ATTRIBUTE: &str = "request.body";
-const RESPONSE_ATTRIBUTE: &str = "response";
-const JWT_ATTRIBUTE: &str = "jwt";
-const MCP_ATTRIBUTE: &str = "mcp";
+pub const REQUEST_ATTRIBUTE: &str = "request";
+pub const REQUEST_BODY_ATTRIBUTE: &str = "request.body";
+pub const RESPONSE_ATTRIBUTE: &str = "response";
+pub const JWT_ATTRIBUTE: &str = "jwt";
+pub const MCP_ATTRIBUTE: &str = "mcp";
 
 pub struct Expression {
 	attributes: HashSet<String>,
@@ -74,15 +74,10 @@ fn root_context() -> Arc<Context<'static>> {
 
 static ROOT_CONTEXT: Lazy<Arc<Context<'static>>> = Lazy::new(|| Arc::new(Context::default()));
 
+#[derive(Debug)]
 pub struct ContextBuilder {
-	attributes: HashSet<String>,
-	context: ExpressionContext,
-}
-
-impl Debug for ContextBuilder {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("ContextBuilder").finish()
-	}
+	pub attributes: HashSet<String>,
+	pub context: ExpressionContext,
 }
 
 impl Default for ContextBuilder {
@@ -207,30 +202,30 @@ impl Expression {
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
-struct ExpressionContext {
-	request: Option<RequestContext>,
-	response: Option<ResponseContext>,
-	jwt: Option<Claims>,
+pub struct ExpressionContext {
+	pub request: Option<RequestContext>,
+	pub response: Option<ResponseContext>,
+	pub jwt: Option<Claims>,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct RequestContext {
+pub struct RequestContext {
 	#[serde(with = "http_serde::method")]
-	method: ::http::Method,
+	pub method: ::http::Method,
 
 	#[serde(with = "http_serde::uri")]
-	uri: ::http::Uri,
+	pub uri: ::http::Uri,
 
 	#[serde(with = "http_serde::header_map")]
-	headers: ::http::HeaderMap,
+	pub headers: ::http::HeaderMap,
 
-	body: Option<Bytes>,
+	pub body: Option<Bytes>,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct ResponseContext {
+pub struct ResponseContext {
 	#[serde(with = "http_serde::status_code")]
-	code: ::http::StatusCode,
+	pub code: ::http::StatusCode,
 }
 
 fn create_context<'a>() -> Context<'a> {

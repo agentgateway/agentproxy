@@ -22,7 +22,6 @@ fn run_test(req: &Request, routes: &[(&str, Vec<&str>, Vec<RouteMatch>)]) -> Opt
 	let dummy_dest = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1000);
 
 	let listener = setup_listener(routes);
-	dbg!(&listener);
 
 	let result = super::select_best_route(
 		stores.clone(),

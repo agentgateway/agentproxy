@@ -39,19 +39,21 @@ use tracing::{Instrument, debug, event, info, info_span, trace};
 use types::agent::*;
 use types::discovery::*;
 
+use crate::cel::ContextBuilder;
 use crate::client::{Client, Transport};
 use crate::http::auth::BackendAuth;
 use crate::http::backendtls::BackendTLS;
 use crate::http::ext_authz::ExtAuthz;
 use crate::http::ext_proc::ExtProc;
 use crate::http::jwt::{Claims, TokenError};
+use crate::http::transformation_cel::Transformation;
 use crate::http::{
 	Authority, HeaderName, HeaderValue, Request, Response, Scheme, StatusCode, Uri, auth, ext_proc,
 	filters, get_host, merge_in_headers, retry,
 };
 use crate::llm::{LLMRequest, LLMResponse, RequestResult};
 use crate::proxy::ProxyError;
-use crate::store::{BackendPolicies, Event, LLMRoutePolicies};
+use crate::store::{BackendPolicies, Event, LLMRoutePolicies, RoutePolicies};
 use crate::telemetry::log;
 use crate::telemetry::log::{AsyncLog, DropOnLog, LogBody, RequestLog};
 use crate::telemetry::metrics::TCPLabels;
@@ -101,6 +103,12 @@ async fn apply_request_policies(
 		http::PolicyResponse::default()
 	};
 	let policy_resp = ext_auth.merge(lrl);
+
+	if let Some(j) = &policies.transformation {
+		j.apply_request(req, log.cel.ctx())
+			.map_err(|_| ProxyError::TransformationFailure)?;
+	}
+
 	Ok(policy_resp)
 }
 
@@ -372,17 +380,30 @@ impl HTTPProxy {
 
 		debug!(bind=%bind_name, listener=%selected_listener.key, route=%selected_route.key, "selected route");
 
-		let mut response_polices = ResponsePolicies::default();
 		let route_policies = inputs.stores.read_binds().route_policies(
 			selected_route.key.clone(),
 			selected_route.route_name.clone(),
 			selected_listener.gateway_name.clone(),
 		);
+		// Register all expressions
+		route_policies.register_cel_expressions(&req, log.cel.ctx());
+		// This is unfortunate but we record the request twice possibly; we want to record it as early as possible
+		// so we can do logging, etc when we find no routes.
+		// But we may find new expressions that now need the request.
+		// it is zero-cost at runtime to do it twice so NBD.
+		let needs_body = log.cel.ctx().with_request(&req);
+		if needs_body {
+			if let Ok(body) = crate::http::inspect_body(req.body_mut()).await {
+				log.cel.ctx().with_request_body(body);
+			}
+		}
+
 		let ext_authz_response =
 			apply_request_policies(&route_policies, upstream.clone(), log, &mut req).await?;
 		if let Some(dr) = ext_authz_response.direct_response {
 			return Ok(dr);
 		}
+		let mut response_polices = ResponsePolicies::from(route_policies.transformation.clone());
 		merge_in_headers(
 			ext_authz_response.response_headers,
 			&mut response_polices.response_headers,
@@ -443,6 +464,7 @@ impl HTTPProxy {
 			_ => &None,
 		};
 		let late_route_policies: Arc<LLMRoutePolicies> = Arc::new(route_policies.into());
+		let response_polices = Arc::new(response_polices);
 		// attempts is the total number of attempts, not the retries
 		let attempts = retries.as_ref().map(|r| r.attempts.get() + 1).unwrap_or(1);
 		let body = if attempts > 1 {
@@ -538,7 +560,7 @@ impl HTTPProxy {
 		upstream: Client,
 		selected_backend: &RouteBackend,
 		selected_route: &Route,
-		response_policies: ResponsePolicies,
+		response_policies: Arc<ResponsePolicies>,
 		mut req: Request,
 	) -> Result<Response, ProxyError> {
 		let inputs = self.inputs.clone();
@@ -591,7 +613,7 @@ impl HTTPProxy {
 		// Handle response filters
 		apply_response_filters(selected_route.filters.as_slice(), &mut resp)?;
 		apply_response_filters(selected_backend.filters.as_slice(), &mut resp)?;
-		response_policies.apply(&mut resp);
+		response_policies.apply(&mut resp, log)?;
 
 		// for now we do not have any body timeout. Maybe we should add it
 		// let resp = body_timeout.apply(resp);
@@ -1030,14 +1052,26 @@ struct BackendCall {
 	default_policies: Option<BackendPolicies>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug)]
 struct ResponsePolicies {
+	transformation: Option<Transformation>,
 	response_headers: HeaderMap,
 }
 
 impl ResponsePolicies {
-	pub fn apply(self, resp: &mut Response) {
-		merge_in_headers(Some(self.response_headers), resp.headers_mut());
+	pub fn from(transformation: Option<Transformation>) -> ResponsePolicies {
+		Self {
+			transformation,
+			response_headers: HeaderMap::new(),
+		}
+	}
+	pub fn apply(&self, resp: &mut Response, log: &mut RequestLog) -> Result<(), ProxyError> {
+		if let Some(j) = &self.transformation {
+			j.apply_response(resp, log.cel.ctx())
+				.map_err(|_| ProxyError::TransformationFailure)?;
+		}
+		merge_in_headers(Some(self.response_headers.clone()), resp.headers_mut());
+		Ok(())
 	}
 }
 

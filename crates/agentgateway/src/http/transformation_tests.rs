@@ -19,6 +19,8 @@ fn test_transformation() {
 		.body(crate::http::Body::empty())
 		.unwrap();
 	let xfm = build([("x-insert", r#"hello {{ request_header("x-custom-foo") }}"#)]);
-	xfm.apply(&mut req);
+	let mut ctx = xfm.ctx();
+	ctx.with_request(&req);
+	xfm.apply(&mut req, ctx);
 	assert_eq!(req.headers().get("x-insert").unwrap(), "hello Bar");
 }
