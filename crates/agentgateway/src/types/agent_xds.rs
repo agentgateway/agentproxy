@@ -29,7 +29,9 @@ use super::agent::*;
 use crate::http::auth::BackendAuth;
 use crate::http::jwt::Jwt;
 use crate::http::localratelimit::RateLimit;
-use crate::http::{HeaderName, HeaderValue, StatusCode, filters, retry, status, timeout, uri};
+use crate::http::{
+	HeaderName, HeaderValue, StatusCode, filters, localratelimit, retry, status, timeout, uri,
+};
 use crate::mcp::rbac::RuleSet;
 use crate::transport::tls;
 use crate::types::agent::Backend::Opaque;
@@ -37,6 +39,7 @@ use crate::types::discovery::NamespacedHostname;
 use crate::types::proto;
 use crate::types::proto::ProtoError;
 use crate::types::proto::agent::mcp_target::{Kind, Protocol};
+use crate::types::proto::agent::policy_spec::local_rate_limit::Type;
 use crate::*;
 
 impl TryFrom<&proto::agent::TlsConfig> for TLSConfig {
@@ -453,5 +456,50 @@ fn default_as_none<T: Default + PartialEq>(i: T) -> Option<T> {
 		None
 	} else {
 		Some(i)
+	}
+}
+
+impl TryFrom<&proto::agent::Policy> for TargetedPolicy {
+	type Error = ProtoError;
+
+	fn try_from(s: &proto::agent::Policy) -> Result<Self, Self::Error> {
+		let name = PolicyName::from(&s.name);
+		let target = s.target.as_ref().ok_or(ProtoError::MissingRequiredField)?;
+		let spec = s.spec.as_ref().ok_or(ProtoError::MissingRequiredField)?;
+		let target = match &target.kind {
+			Some(proto::agent::policy_target::Kind::Gateway(v)) => PolicyTarget::Gateway(v.into()),
+			Some(proto::agent::policy_target::Kind::Listener(v)) => PolicyTarget::Listener(v.into()),
+			Some(proto::agent::policy_target::Kind::Route(v)) => PolicyTarget::Route(v.into()),
+			Some(proto::agent::policy_target::Kind::RouteRule(v)) => PolicyTarget::RouteRule(v.into()),
+			Some(proto::agent::policy_target::Kind::Backend(v)) => PolicyTarget::Backend(v.into()),
+			_ => return Err(ProtoError::EnumParse("unknown target kind".to_string())),
+		};
+		let policy = match &spec.kind {
+			Some(proto::agent::policy_spec::Kind::LocalRateLimit(lrl)) => {
+				let t = proto::agent::policy_spec::local_rate_limit::Type::try_from(lrl.r#type)?;
+				Policy::LocalRateLimit(vec![
+					localratelimit::RateLimitSerde {
+						max_tokens: lrl.max_tokens,
+						tokens_per_fill: lrl.tokens_per_fill,
+						fill_interval: lrl
+							.fill_interval
+							.ok_or(ProtoError::MissingRequiredField)?
+							.try_into()?,
+						limit_type: match t {
+							Type::Request => localratelimit::RateLimitType::Requests,
+							Type::Token => localratelimit::RateLimitType::Tokens,
+						},
+					}
+					.try_into()
+					.map_err(|e| ProtoError::Generic(format!("invalid rate limit: {e}")))?,
+				])
+			},
+			_ => return Err(ProtoError::EnumParse("unknown spec kind".to_string())),
+		};
+		Ok(TargetedPolicy {
+			name,
+			target,
+			policy,
+		})
 	}
 }

@@ -35,13 +35,13 @@ binds:
         # Modify request headers
         requestHeaderModifier:
           add:
-            - [x-req-added, value]
+            x-req-added: value
           remove:
             - x-illegal-header
         # Modify response headers
         responseHeaderModifier:
           set:
-            - [x-req-added, value]
+            x-req-added: value
         # Rewrite url/hostname
         urlRewrite:
           path:

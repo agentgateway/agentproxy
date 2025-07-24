@@ -691,10 +691,12 @@
                             "type": [
                               "object",
                               "null"
-                            ]
+                            ],
+                            "default": null
                           },
                           "ai": {
-                            "description": "Mark this as LLM traffic to enable LLM processing."
+                            "description": "Mark this as LLM traffic to enable LLM processing.",
+                            "default": null
                           },
                           "backendAuth": {
                             "description": "Authenticate to the backend.",
@@ -769,7 +771,8 @@
                               {
                                 "type": "null"
                               }
-                            ]
+                            ],
+                            "default": null
                           },
                           "backendTLS": {
                             "description": "Send TLS to the backend.",
@@ -805,7 +808,8 @@
                                 ]
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "cors": {
                             "description": "Handle CORS preflight requests and append configured CORS headers to applicable requests.",
@@ -854,7 +858,8 @@
                                 "default": null
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "directResponse": {
                             "description": "Directly respond to the request with a static response.",
@@ -883,13 +888,15 @@
                               }
                             },
                             "additionalProperties": false,
+                            "default": null,
                             "required": [
                               "body",
                               "status"
                             ]
                           },
                           "extAuthz": {
-                            "description": "Authenticate incoming requests by calling an external authorization server."
+                            "description": "Authenticate incoming requests by calling an external authorization server.",
+                            "default": null
                           },
                           "jwtAuth": {
                             "description": "Authenticate incoming JWT requests.",
@@ -945,7 +952,8 @@
                             ]
                           },
                           "localRateLimit": {
-                            "description": "Rate limit incoming requests. State is kept local."
+                            "description": "Rate limit incoming requests. State is kept local.",
+                            "default": []
                           },
                           "mcpAuthentication": {
                             "description": "Authentication for MCP clients.",
@@ -1002,6 +1010,7 @@
                                 }
                               }
                             },
+                            "default": null,
                             "required": [
                               "issuer",
                               "scopes",
@@ -1022,12 +1031,14 @@
                                 }
                               }
                             },
+                            "default": null,
                             "required": [
                               "rules"
                             ]
                           },
                           "remoteRateLimit": {
-                            "description": "Rate limit incoming requests. State is managed by a remote server."
+                            "description": "Rate limit incoming requests. State is managed by a remote server.",
+                            "default": null
                           },
                           "requestHeaderModifier": {
                             "description": "Headers to be modified in the request.",
@@ -1037,19 +1048,9 @@
                             ],
                             "properties": {
                               "add": {
-                                "type": "array",
-                                "items": {
-                                  "type": "array",
-                                  "maxItems": 2,
-                                  "minItems": 2,
-                                  "prefixItems": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "string"
-                                    }
-                                  ]
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
                                 }
                               },
                               "remove": {
@@ -1059,23 +1060,14 @@
                                 }
                               },
                               "set": {
-                                "type": "array",
-                                "items": {
-                                  "type": "array",
-                                  "maxItems": 2,
-                                  "minItems": 2,
-                                  "prefixItems": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "string"
-                                    }
-                                  ]
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
                                 }
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "requestMirror": {
                             "description": "Mirror incoming requests to another destination.",
@@ -1190,6 +1182,7 @@
                               }
                             },
                             "additionalProperties": false,
+                            "default": null,
                             "required": [
                               "backend",
                               "percentage"
@@ -1303,7 +1296,8 @@
                                 "minimum": 1
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "responseHeaderModifier": {
                             "description": "Headers to be modified in the response.",
@@ -1313,19 +1307,9 @@
                             ],
                             "properties": {
                               "add": {
-                                "type": "array",
-                                "items": {
-                                  "type": "array",
-                                  "maxItems": 2,
-                                  "minItems": 2,
-                                  "prefixItems": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "string"
-                                    }
-                                  ]
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
                                 }
                               },
                               "remove": {
@@ -1335,23 +1319,14 @@
                                 }
                               },
                               "set": {
-                                "type": "array",
-                                "items": {
-                                  "type": "array",
-                                  "maxItems": 2,
-                                  "minItems": 2,
-                                  "prefixItems": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "string"
-                                    }
-                                  ]
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
                                 }
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "retry": {
                             "description": "Retry matching requests.",
@@ -1384,6 +1359,7 @@
                               }
                             },
                             "additionalProperties": false,
+                            "default": null,
                             "required": [
                               "codes"
                             ]
@@ -1408,7 +1384,93 @@
                                 ]
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
+                          },
+                          "transformations": {
+                            "description": "Modify requests and responses",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "request": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "add": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "default": {}
+                                  },
+                                  "body": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "default": null
+                                  },
+                                  "remove": {
+                                    "type": "array",
+                                    "default": [],
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "set": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "default": {}
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "response": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "add": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "default": {}
+                                  },
+                                  "body": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "default": null
+                                  },
+                                  "remove": {
+                                    "type": "array",
+                                    "default": [],
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "set": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "default": {}
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false,
+                            "default": null
                           },
                           "urlRewrite": {
                             "description": "Modify the URL path or authority.",
@@ -1503,7 +1565,8 @@
                                 ]
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "default": null
                           }
                         },
                         "additionalProperties": false

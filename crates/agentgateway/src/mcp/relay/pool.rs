@@ -199,10 +199,13 @@ impl ConnectionPool {
 					),
 				}
 			},
-			McpTargetSpec::Stdio { cmd, args, env: _ } => {
+			McpTargetSpec::Stdio { cmd, args, env } => {
 				debug!("starting stdio transport for target: {}", target.name);
 				let mut c = Command::new(cmd);
 				c.args(args);
+				for (k, v) in env {
+					c.env(k, v);
+				}
 				upstream::UpstreamTarget {
 					spec: upstream::UpstreamTargetSpec::Mcp(
 						serve_client_with_ct(

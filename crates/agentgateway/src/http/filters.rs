@@ -14,13 +14,16 @@ use crate::*;
 #[path = "filters_test.rs"]
 mod tests;
 
+#[serde_with::serde_as]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct HeaderModifier {
 	#[serde(default, skip_serializing_if = "is_default")]
+	#[serde_as(as = "serde_with::Map<_, _>")]
 	pub add: Vec<(Strng, Strng)>,
 	#[serde(default, skip_serializing_if = "is_default")]
+	#[serde_as(as = "serde_with::Map<_, _>")]
 	pub set: Vec<(Strng, Strng)>,
 	#[serde(default, skip_serializing_if = "is_default")]
 	pub remove: Vec<Strng>,

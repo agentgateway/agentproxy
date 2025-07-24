@@ -1,72 +1,80 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use crate::cel;
+use crate::cel::{Attribute, ContextBuilder, ExpressionContext};
 use http::{HeaderName, HeaderValue, Request};
 use minijinja::value::Object;
 use minijinja::{Environment, Value, context};
 
+const REQUEST_HEADER_ATTRIBUTE: &str = "request_header";
+const RESPONSE_HEADER_ATTRIBUTE: &str = "header";
+const BODY_ATTRIBUTE: &str = "body";
+const RESPONSE_ATTRIBUTE: &str = "response";
+const JWT_ATTRIBUTE: &str = "jwt";
+const MCP_ATTRIBUTE: &str = "mcp";
+
 pub struct Transformation {
 	env: Environment<'static>,
-	request_headers: HashMap<HeaderName, String>,
+	templates: Vec<CompiledTemplate>,
+	attributes: HashSet<String>,
+}
+
+impl Transformation {
+	pub fn ctx(&self) -> ContextBuilder {
+		ContextBuilder {
+			attributes: self
+				.attributes
+				.iter()
+				.filter_map(|a| match a.as_str() {
+					REQUEST_HEADER_ATTRIBUTE => Some(cel::REQUEST_ATTRIBUTE),
+					RESPONSE_HEADER_ATTRIBUTE => Some(cel::RESPONSE_ATTRIBUTE),
+					_ => None,
+				})
+				.map(|s| s.to_string())
+				.collect(),
+			context: Default::default(),
+		}
+	}
+}
+
+struct CompiledTemplate {
+	name: String,
+	// Assumed to be request for now
+	header: HeaderName,
 }
 
 fn build(transforms: HashMap<HeaderName, String>) -> anyhow::Result<Transformation> {
 	let mut env: Environment<'static> = Environment::new();
-	let mut res = HashMap::new();
+	env.add_function("request_header", functions::request_header);
+	let mut templates = Vec::new();
+	let mut attributes = HashSet::new();
+	let id = 0;
 	for (k, t) in transforms.into_iter() {
-		let name = format!("request_header_{k}");
+		let name = format!("template_{id}");
 		env.add_template_owned(name.clone(), t)?;
-		env.add_function("request_header", functions::request_header);
-		// }
-		res.insert(k, name);
+		let tmpl = env.get_template(&name)?;
+		attributes.extend(tmpl.undeclared_variables(false));
+		templates.push(CompiledTemplate { name, header: k });
 	}
 	Ok(Transformation {
 		env,
-		request_headers: res,
+		templates,
+		attributes,
 	})
 }
 
-#[derive(Debug)]
-struct RequestState {
-	req: crate::http::HeaderMap,
-}
-
-impl Object for RequestState {}
-
-// thread_local! {
-//     static CURRENT_REQUEST: RefCell<Option<&'a crate::http::Request>> = RefCell::default()
-// }
-//
-// /// Binds the given request to a thread local for `url_for`.
-// fn with_bound_req<F, R>(req: &crate::http::Request, f: F) -> R
-// where
-// F: FnOnce() -> R,
-// {
-//     let rq = std::rc::Rc::new(req);
-// 	CURRENT_REQUEST.with(|current_req| *current_req.borrow_mut() = Some(req.clone()));
-// 	let rv = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
-// 	CURRENT_REQUEST.with(|current_req| current_req.borrow_mut().take());
-// 	match rv {
-// 		Ok(rv) => rv,
-// 		Err(panic) => std::panic::resume_unwind(panic),
-// 	}
-// }
-
 impl Transformation {
-	pub fn apply(&self, req: &mut crate::http::Request) {
-		for (name, tmpl_key) in self.request_headers.iter() {
-			let tmpl = self
-				.env
-				.get_template(tmpl_key)
-				.expect("template must exist");
+	pub fn apply(&self, req: &mut crate::http::Request, ctx: ContextBuilder) {
+		let v = to_value(ctx);
+		for t in self.templates.iter() {
+			let tmpl = self.env.get_template(&t.name).expect("template must exist");
 			let headers = req.headers();
-			// This is rather unfortunate we need to copy things when they may not even be used
-			// We could use undeclared_variables to find what is reference but we still need to clone the full header map
 			let res = tmpl.render(context! {
-					STATE => Value::from_object(RequestState{req: req.headers().clone()}),
+					STATE => v,
 			});
 			req.headers_mut().insert(
-				name,
+				t.header.clone(),
 				HeaderValue::try_from(res.unwrap_or_else(|_| "template render failed".to_string()))
 					.unwrap(),
 			);
@@ -74,21 +82,35 @@ impl Transformation {
 	}
 }
 
+impl Object for ExpressionContext {}
+
+fn to_value(ctx: ContextBuilder) -> Value {
+	Value::from_object(ctx.context)
+	// Value::from_serialize(ctx.context)
+}
+
 mod functions {
+	use crate::cel::ExpressionContext;
 	use minijinja::{State, Value};
 
-	use crate::http::transformation::RequestState;
+	macro_rules! state {
+		($s:ident) => {
+			let Some(state_value) = $s.lookup("STATE") else {
+				return Default::default();
+			};
+			let Some(state) = state_value.downcast_object_ref::<ExpressionContext>() else {
+				return Default::default();
+			};
+			let $s = state;
+		};
+	}
 
 	pub fn request_header(state: &State, key: &str) -> String {
-		let Some(state) = state.lookup("STATE") else {
-			return "".to_string();
-		};
-		let Some(state) = state.downcast_object_ref::<RequestState>() else {
-			return "".to_string();
-		};
+		state!(state);
 		state
-			.req
-			.get(key)
+			.request
+			.as_ref()
+			.and_then(|r| r.headers.get(key))
 			.and_then(|s| {
 				std::str::from_utf8(s.as_bytes())
 					.ok()
