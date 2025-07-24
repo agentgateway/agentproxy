@@ -13,8 +13,8 @@ use crate::telemetry::log::LoggingFields;
 use crate::telemetry::trc;
 use crate::types::discovery::Identity;
 use crate::{
-	cel, client, serdes, telemetry, Address, Config, ConfigSource, NestedRawConfig, RawConfig,
-	XDSConfig,
+	Address, Config, ConfigSource, NestedRawConfig, RawConfig, XDSConfig, cel, client, serdes,
+	telemetry,
 };
 
 pub fn parse_config(contents: String, filename: Option<PathBuf>) -> anyhow::Result<Config> {
