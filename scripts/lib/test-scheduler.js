@@ -16,6 +16,7 @@ class TestScheduler {
     this.testGroups = options.testGroups || this.getDefaultTestGroups();
     this.baseDir = options.baseDir || 'ui/cypress/e2e';
     this.testHistory = options.testHistory || {};
+    this.smokeOnly = options.smokeOnly || false;
     
     this.schedulingStrategy = options.strategy || 'balanced'; // balanced, fastest, priority
     this.maxWorkersPerGroup = options.maxWorkersPerGroup || 8;
@@ -26,6 +27,15 @@ class TestScheduler {
    */
   getDefaultTestGroups() {
     return {
+      smoke: {
+        patterns: [
+          'smoke/*.cy.ts'
+        ],
+        maxWorkers: 4,
+        estimatedTimePerTest: 1, // seconds
+        priority: 'critical',
+        memoryPerWorker: 250 * 1024 * 1024 // 250MB
+      },
       fast: {
         patterns: [
           'foundation/*.cy.ts',
@@ -67,8 +77,17 @@ class TestScheduler {
     const testFiles = [];
     
     console.log(`🔍 Searching for tests in: ${this.baseDir}`);
+    if (this.smokeOnly) {
+      console.log('🚀 Smoke test mode - only running smoke tests');
+    }
     
     for (const [groupName, group] of Object.entries(this.testGroups)) {
+      // Skip non-smoke groups if smokeOnly is enabled
+      if (this.smokeOnly && groupName !== 'smoke') {
+        console.log(`📂 Group ${groupName}: Skipped (smoke mode)`);
+        continue;
+      }
+      
       console.log(`📂 Group ${groupName}:`);
       for (const pattern of group.patterns) {
         const fullPattern = path.join(this.baseDir, pattern);
@@ -168,6 +187,7 @@ class TestScheduler {
    */
   getPriorityScore(priority) {
     const scores = {
+      'critical': 4,
       'high': 3,
       'medium': 2,
       'low': 1

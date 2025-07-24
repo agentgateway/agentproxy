@@ -68,7 +68,8 @@ class ParallelTestRunner {
     // Initialize test scheduler
     this.testScheduler = new TestScheduler({
       baseDir: 'cypress/e2e', // Relative to ui directory when script runs from ui
-      strategy: this.options.strategy
+      strategy: this.options.strategy,
+      smokeOnly: this.options.smoke
     });
     
     // Initialize worker manager
@@ -586,13 +587,15 @@ async function main() {
     .version('1.0.0')
     .option('--workers <number>', 'Maximum number of workers', parseInt)
     .option('--strategy <type>', 'Scheduling strategy (balanced, fastest, priority)', 'balanced')
-    .option('--browser <name>', 'Browser to use', 'electron')
+    .option('--browser <name>', 'Browser to use (electron, chrome, firefox, edge)', 'electron')
+    .option('--headed', 'Run in headed mode (visible browser)')
     .option('--no-headless', 'Run in headed mode')
     .option('--no-video', 'Disable video recording')
     .option('--no-quiet', 'Enable verbose output')
     .option('--debug', 'Enable debug mode')
     .option('--ci', 'CI environment mode')
     .option('--dev', 'Development mode')
+    .option('--smoke', 'Run only smoke tests')
     .option('--memory-limit <percent>', 'Memory usage limit percentage', parseFloat, 85)
     .option('--disk-buffer <mb>', 'Disk space buffer in MB', parseFloat, 100);
 
@@ -611,6 +614,7 @@ async function main() {
       debug: options.debug,
       ci: options.ci,
       dev: options.dev,
+      smoke: options.smoke,
       memoryLimit: options.memoryLimit,
       diskSpaceBuffer: options.diskBuffer * 1024 * 1024
     });
