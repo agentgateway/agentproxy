@@ -3,6 +3,7 @@ syntax = "proto3";
 package agentgateway.dev.resource;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/agentgateway/agentgateway/go/api;api";
 
@@ -110,7 +111,24 @@ message RouteFilter {
     RequestRedirect request_redirect = 3;
     UrlRewrite url_rewrite = 4;
     RequestMirror request_mirror = 5;
+    DirectResponse direct_response = 6;
+    CORS cors = 7;
   }
+}
+
+message CORS {
+  bool allow_credentials = 1;
+  repeated string allow_headers = 2;
+  repeated string allow_methods = 3;
+  repeated string allow_origins = 4;
+  repeated string expose_headers = 5;
+  // max_age is in seconds, use google.protobuf.Duration if available, otherwise uint64 for seconds
+  google.protobuf.Duration max_age = 6;
+}
+
+message DirectResponse {
+  uint32 status = 1;
+  bytes body = 2;
 }
 
 message HeaderModifier {
@@ -225,21 +243,21 @@ message AIBackend {
   }
   Override override = 1;
   message OpenAI {
-    string model = 1;
+    google.protobuf.StringValue model = 1;
   }
   message Gemini {
-    string model = 1;
+    google.protobuf.StringValue model = 1;
   }
   message Vertex {
-    string model = 1;
+    google.protobuf.StringValue model = 1;
     string region = 2;
     string project_id = 3;
   }
   message Anthropic {
-    string model = 1;
+    google.protobuf.StringValue model = 1;
   }
   message Bedrock {
-    string model = 1;
+    google.protobuf.StringValue model = 1;
     string region = 2;
   }
   oneof provider {

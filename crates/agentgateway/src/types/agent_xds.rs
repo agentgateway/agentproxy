@@ -32,6 +32,7 @@ use crate::http::localratelimit::RateLimit;
 use crate::http::{
 	HeaderName, HeaderValue, StatusCode, filters, localratelimit, retry, status, timeout, uri,
 };
+use crate::llm::{AIBackend, AIProvider};
 use crate::mcp::rbac::RuleSet;
 use crate::transport::tls;
 use crate::types::agent::Backend::Opaque;
@@ -226,11 +227,59 @@ impl TryFrom<&proto::agent::Backend> for Backend {
 				Target::try_from((s.host.as_str(), s.port as u16))
 					.map_err(|e| ProtoError::Generic(e.to_string()))?,
 			),
-			Some(proto::agent::backend::Kind::Ai(a)) => {
-				return Err(ProtoError::Generic(
-					"AI backend is not currently supported".to_string(),
-				));
-			},
+			Some(proto::agent::backend::Kind::Ai(a)) => Backend::AI(
+				name,
+				AIBackend {
+					host_override: a
+						.r#override
+						.as_ref()
+						.map(|o| {
+							Target::try_from((o.host.as_str(), o.port as u16))
+								.map_err(|e| ProtoError::Generic(e.to_string()))
+						})
+						.transpose()?,
+					provider: match &a.provider {
+						Some(proto::agent::ai_backend::Provider::Openai(openai)) => {
+							AIProvider::OpenAI(llm::openai::Provider {
+								model: openai.model.as_deref().map(strng::new),
+							})
+						},
+						Some(proto::agent::ai_backend::Provider::Gemini(gemini)) => {
+							AIProvider::Gemini(llm::gemini::Provider {
+								model: gemini.model.as_deref().map(strng::new),
+							})
+						},
+						Some(proto::agent::ai_backend::Provider::Vertex(vertex)) => {
+							AIProvider::Vertex(llm::vertex::Provider {
+								model: vertex.model.as_deref().map(strng::new),
+								region: Some(strng::new(&vertex.region)),
+								project_id: strng::new(&vertex.project_id),
+							})
+						},
+						Some(proto::agent::ai_backend::Provider::Anthropic(anthropic)) => {
+							AIProvider::Anthropic(llm::anthropic::Provider {
+								model: anthropic.model.as_deref().map(strng::new),
+							})
+						},
+						Some(proto::agent::ai_backend::Provider::Bedrock(bedrock)) => {
+							AIProvider::Bedrock(llm::bedrock::Provider {
+								model: strng::new(
+									bedrock
+										.model
+										.as_deref()
+										.ok_or_else(|| ProtoError::Generic("bedrock requires a model".to_string()))?,
+								),
+								region: strng::new(&bedrock.region),
+							})
+						},
+						None => {
+							return Err(ProtoError::Generic(
+								"AI backend provider is required".to_string(),
+							));
+						},
+					},
+				},
+			),
 			Some(proto::agent::backend::Kind::Mcp(m)) => Backend::MCP(
 				name,
 				McpBackend {
@@ -450,6 +499,23 @@ impl TryFrom<&proto::agent::RouteFilter> for RouteFilter {
 					percentage: m.percentage / 100.0,
 				})
 			},
+			Some(proto::agent::route_filter::Kind::DirectResponse(m)) => {
+				RouteFilter::DirectResponse(filters::DirectResponse {
+					body: Bytes::copy_from_slice(&m.body),
+					status: StatusCode::from_u16(m.status as u16)?,
+				})
+			},
+			Some(proto::agent::route_filter::Kind::Cors(c)) => RouteFilter::CORS(
+				http::cors::Cors::try_from(http::cors::CorsSerde {
+					allow_credentials: c.allow_credentials,
+					allow_headers: c.allow_headers.clone(),
+					allow_methods: c.allow_methods.clone(),
+					allow_origins: c.allow_origins.clone(),
+					expose_headers: c.expose_headers.clone(),
+					max_age: c.max_age.map(|d| Duration::from_secs(d.seconds as u64)),
+				})
+				.map_err(|e| ProtoError::Generic(e.to_string()))?,
+			),
 		})
 	}
 }
