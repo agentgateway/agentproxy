@@ -5,7 +5,6 @@
 
 use std::path::Path;
 use std::time::{Duration, SystemTime};
-use std::collections::HashMap;
 
 // Import the report generator types
 mod report_generator;

@@ -4,7 +4,6 @@
 //! to provide accurate comparative analysis for AgentGateway performance.
 
 use std::collections::HashMap;
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 /// Verified baseline performance data from industry sources

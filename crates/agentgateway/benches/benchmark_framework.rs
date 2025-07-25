@@ -4,7 +4,7 @@
 //! including statistical analysis, environment documentation, and comprehensive metrics.
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 use serde::{Deserialize, Serialize};
 
 /// Comprehensive benchmark metrics with statistical analysis

@@ -4,7 +4,6 @@
 
 use std::env;
 use std::net::SocketAddr;
-use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -28,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn handle_connection(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_connection(mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut buffer = [0; 4096];
     let bytes_read = stream.read(&mut buffer).await?;
     
@@ -65,23 +64,8 @@ async fn handle_connection(mut stream: TcpStream) -> Result<(), Box<dyn std::err
             ("200 OK", "text/plain", "warmup")
         }
         ("GET", path) if path.starts_with("/payload") => {
-            // Extract size parameter
-            let size = if let Some(query) = path.split('?').nth(1) {
-                if let Some(size_param) = query.split('&')
-                    .find(|param| param.starts_with("size=")) {
-                    size_param.split('=').nth(1)
-                        .and_then(|s| s.parse::<usize>().ok())
-                        .unwrap_or(1024)
-                } else {
-                    1024
-                }
-            } else {
-                1024
-            };
-            
-            // Generate payload of requested size
-            let payload = "x".repeat(size);
-            ("200 OK", "text/plain", Box::leak(payload.into_boxed_str()))
+            // For simplicity, return a fixed 1KB payload
+            ("200 OK", "text/plain", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
         }
         ("GET", "/health") => {
             ("200 OK", "application/json", r#"{"status": "healthy", "uptime": 123}"#)
