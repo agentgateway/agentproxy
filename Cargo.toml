@@ -11,6 +11,7 @@ members = [
     "crates/hbone",
     "crates/mock-server",
     "crates/xds",
+    "crates/xtask",
 ]
 default-members = [
     "crates/a2a-sdk",
@@ -138,7 +139,7 @@ schemars = { version = "=1.0.4", git = "https://github.com/howardjohn/schemars",
 secrecy = { version = "0.10", features = ["serde"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde-transcode = "1.1"
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 serde_json_path_to_error = "0.1"
 serde_regex = "1.1"
 serde_yaml = "0.9"

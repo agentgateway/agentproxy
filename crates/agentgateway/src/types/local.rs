@@ -12,7 +12,7 @@ use jsonwebtoken::{DecodingKey, Validation};
 use rmcp::handler::server::router::tool::CallToolHandlerExt;
 use rustls::{ClientConfig, ServerConfig};
 use serde::de::DeserializeOwned;
-use serde_with::serde_as;
+use serde_with::{TryFromInto, serde_as};
 
 use crate::http::auth::BackendAuth;
 use crate::http::backendtls::{BackendTLS, LocalBackendTLS};
@@ -32,7 +32,6 @@ use crate::types::agent::{
 };
 use crate::types::discovery::{NamespacedHostname, Service};
 use crate::*;
-use serde_with::TryFromInto;
 
 impl NormalizedLocalConfig {
 	pub async fn from(client: client::Client, s: &str) -> anyhow::Result<NormalizedLocalConfig> {
@@ -56,18 +55,10 @@ pub struct NormalizedLocalConfig {
 	pub services: Vec<Service>,
 }
 
-#[cfg(feature = "schema")]
-pub fn generate_schema() -> String {
-	let settings = schemars::generate::SchemaSettings::default().with(|s| s.inline_subschemas = true);
-	let gens = schemars::SchemaGenerator::new(settings);
-	let schema = gens.into_root_schema_for::<LocalConfig>();
-	serde_json::to_string_pretty(&schema).unwrap()
-}
-
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-struct LocalConfig {
+pub struct LocalConfig {
 	#[serde(default)]
 	config: Arc<Option<serde_json::value::Value>>,
 	#[serde(default)]

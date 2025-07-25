@@ -1,3 +1,15 @@
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use ::http::Request;
+use agent_xds::{RejectedConfig, XdsUpdate};
+use axum_core::body::Body;
+use futures_core::Stream;
+use itertools::Itertools;
+use serde::Serialize;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tracing::{Level, instrument};
+
 use crate::cel::ContextBuilder;
 use crate::http::auth::BackendAuth;
 use crate::http::backendtls::BackendTLS;
@@ -16,16 +28,6 @@ use crate::types::proto::agent::{
 	Resource as ADPResource, Route as XdsRoute,
 };
 use crate::*;
-use ::http::Request;
-use agent_xds::{RejectedConfig, XdsUpdate};
-use axum_core::body::Body;
-use futures_core::Stream;
-use itertools::Itertools;
-use serde::Serialize;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
-use tracing::{Level, instrument};
 
 #[derive(Debug)]
 pub struct Store {
@@ -379,6 +381,7 @@ impl Store {
     )]
 	pub fn insert_bind(&mut self, mut bind: Bind) {
 		debug!(bind=%bind.key, "insert bind");
+
 		// Insert any staged listeners
 		for (k, mut v) in self
 			.staged_listeners
@@ -393,7 +396,6 @@ impl Store {
 			}
 			bind.listeners.insert(v)
 		}
-		// TODO: handle update
 		let arc = Arc::new(bind);
 		self.by_name.insert(arc.key.clone(), arc.clone());
 		// ok to have no subs
@@ -429,16 +431,26 @@ impl Store {
 
 	pub fn insert_listener(&mut self, mut lis: Listener, bind_name: BindName) {
 		debug!(listener=%lis.name,bind=%bind_name, "insert listener");
-		// Insert any staged routes
-		for (k, v) in self.staged_routes.remove(&lis.key).into_iter().flatten() {
-			debug!("adding staged route {} to {}", k, lis.key);
-			lis.routes.insert(v)
-		}
 		if let Some(b) = self.by_name.get(&bind_name) {
 			let mut bind = Arc::unwrap_or_clone(b.clone());
+			// If this is a listener update, copy things over
+			if let Some(old) = bind.listeners.remove(&lis.key) {
+				debug!("listener update, copy old routes over");
+				lis.routes = Arc::unwrap_or_clone(old).routes;
+			}
+			// Insert any staged routes
+			for (k, v) in self.staged_routes.remove(&lis.key).into_iter().flatten() {
+				debug!("adding staged route {} to {}", k, lis.key);
+				lis.routes.insert(v)
+			}
 			bind.listeners.insert(lis);
 			self.insert_bind(bind);
 		} else {
+			// Insert any staged routes
+			for (k, v) in self.staged_routes.remove(&lis.key).into_iter().flatten() {
+				debug!("adding staged route {} to {}", k, lis.key);
+				lis.routes.insert(v)
+			}
 			debug!("no bind found, staging");
 			self
 				.staged_listeners
@@ -504,7 +516,13 @@ impl Store {
 	}
 
 	fn insert_xds_bind(&mut self, raw: XdsBind) -> anyhow::Result<()> {
-		let bind = Bind::try_from(&raw)?;
+		let mut bind = Bind::try_from(&raw)?;
+		// If XDS server pushes the same bind twice (which it shouldn't really do, but oh well),
+		// we need to copy the listeners over.
+		if let Some(old) = self.by_name.remove(&bind.key) {
+			debug!("bind update, copy old listeners over");
+			bind.listeners = Arc::unwrap_or_clone(old).listeners;
+		}
 		self.insert_bind(bind);
 		Ok(())
 	}

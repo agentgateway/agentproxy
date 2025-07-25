@@ -7,9 +7,7 @@
 package api
 
 import (
-	_ "github.com/golang/protobuf/ptypes/any"
 	duration "github.com/golang/protobuf/ptypes/duration"
-	_ "github.com/golang/protobuf/ptypes/wrappers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -2780,7 +2778,7 @@ var File_resource_proto protoreflect.FileDescriptor
 
 const file_resource_proto_rawDesc = "" +
 	"\n" +
-	"\x0eresource.proto\x12\x19agentgateway.dev.resource\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x19google/protobuf/any.proto\x1a\x1egoogle/protobuf/duration.proto\"\xc3\x02\n" +
+	"\x0eresource.proto\x12\x19agentgateway.dev.resource\x1a\x1egoogle/protobuf/duration.proto\"\xc3\x02\n" +
 	"\bResource\x125\n" +
 	"\x04bind\x18\x01 \x01(\v2\x1f.agentgateway.dev.resource.BindH\x00R\x04bind\x12A\n" +
 	"\blistener\x18\x02 \x01(\v2#.agentgateway.dev.resource.ListenerH\x00R\blistener\x128\n" +

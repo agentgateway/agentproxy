@@ -119,6 +119,9 @@ jemalloc_pprof = {workspace = true, optional = true}
 frozen-collections = "0.8.0"
 value-bag = { workspace = true, features = ["value-bag-serde1"] }
 httpdate = "1.0"
+net2 = "0.2.39"
+core_affinity = "0.8.3"
+
 [build-dependencies]
 anyhow.workspace = true
 prost-build.workspace = true

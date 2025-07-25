@@ -629,8 +629,8 @@ impl ListenerSet {
 			.map(|(k, v)| v.clone())
 	}
 
-	pub fn remove(&mut self, key: &ListenerKey) {
-		self.inner.remove(key);
+	pub fn remove(&mut self, key: &ListenerKey) -> Option<Arc<Listener>> {
+		self.inner.remove(key)
 	}
 
 	pub fn iter(&self) -> impl Iterator<Item = &Listener> {

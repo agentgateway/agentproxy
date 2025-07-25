@@ -61,6 +61,18 @@ pub fn debug<T: Debug + 'static>(value: &T) -> ValueBag {
 	ValueBag::capture_debug(value)
 }
 
+/// A safe function to determine if a target is enabled.
+/// Do NOT use `tracing::enabled!` which is broken (https://github.com/tokio-rs/tracing/issues/3345)
+pub fn enabled(target: &'static str, level: &tracing::Level) -> bool {
+	if let Some(handle) = LOG_HANDLE.get() {
+		handle
+			.with_current(|f| f.filter().would_enable(target, level))
+			.unwrap_or_default()
+	} else {
+		false
+	}
+}
+
 // log is like using tracing macros, but allows arbitrary k/v pairs. Tracing requires compile-time keys!
 // This does NOT respect tracing enable/log level; users can do that themselves before calling this function.
 pub fn log(level: &str, target: &str, kv: &[(&str, Option<ValueBag>)]) {

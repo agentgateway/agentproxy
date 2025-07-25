@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package agentgateway.dev.resource;
 
-import "google/protobuf/wrappers.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 
 option go_package = "github.com/agentgateway/agentgateway/go/api;api";

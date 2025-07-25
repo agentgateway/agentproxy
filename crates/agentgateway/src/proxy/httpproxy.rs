@@ -585,17 +585,16 @@ impl HTTPProxy {
 		};
 
 		// Setup timeout
-		let (call, body_timeout) = if let Some(timeout) = timeout {
+		let (call_result, body_timeout) = if let Some(timeout) = timeout {
 			let deadline = tokio::time::Instant::from_std(log.start + timeout);
 			let fut = tokio::time::timeout_at(deadline, call);
-			(fut, http::timeout::BodyTimeout::Deadline(deadline))
+			(fut.await, http::timeout::BodyTimeout::Deadline(deadline))
 		} else {
-			let fut = tokio::time::timeout(Duration::MAX, call);
-			(fut, http::timeout::BodyTimeout::None)
+			(Ok(call.await), http::timeout::BodyTimeout::None)
 		};
 
 		// Run the actual call
-		let mut resp = match call.await {
+		let mut resp = match call_result {
 			Ok(Ok(resp)) => resp,
 			Ok(Err(e)) => {
 				return Err(e);
@@ -860,7 +859,7 @@ async fn make_backend_call(
 	}
 	let (mut req, llm_request) = if let Some((llm, _)) = &policies.llm_provider {
 		let r = llm
-			.process_request(client, policies.llm.as_ref(), req)
+			.process_request(client, policies.llm.as_ref(), req, &mut log)
 			.await
 			.map_err(|e| ProxyError::Processing(e.into()))?;
 		let (mut req, llm_request) = match r {
@@ -882,7 +881,11 @@ async fn make_backend_call(
 		transport,
 	};
 	let mut upstream = inputs.upstream.clone();
-	let llm_response_log = log.map(|l| l.llm_response.clone());
+	let llm_response_log = log.as_ref().map(|l| l.llm_response.clone());
+	let include_completion_in_log = log
+		.as_ref()
+		.map(|l| l.cel.cel_context.needs_llm_completion())
+		.unwrap_or_default();
 	let rate_limit = route_policies.local_rate_limit.clone();
 	Ok(Box::pin(async move {
 		let mut resp = upstream.call(call).await?;
@@ -895,6 +898,7 @@ async fn make_backend_call(
 					llm_request,
 					rate_limit,
 					llm_response_log.expect("must be set"),
+					include_completion_in_log,
 					resp,
 				)
 				.await

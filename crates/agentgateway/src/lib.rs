@@ -11,6 +11,7 @@ use std::{fmt, io};
 use agent_core::prelude::*;
 use control::caclient::CaClient;
 use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use indexmap::IndexMap;
 #[cfg(feature = "schema")]
 pub use schemars::JsonSchema;
 use serde::de::Visitor;
@@ -75,6 +76,10 @@ pub struct RawConfig {
 
 	// Admin UI address in the format "ip:port"
 	admin_addr: Option<String>,
+	// Stats/metrics server address in the format "ip:port"
+	stats_addr: Option<String>,
+	// Readiness probe server address in the format "ip:port"
+	readiness_addr: Option<String>,
 
 	auth_token: Option<String>,
 
@@ -119,7 +124,7 @@ pub struct RawLoggingFields {
 	#[serde(default)]
 	remove: Vec<String>,
 	#[serde(default)]
-	add: BTreeMap<String, String>,
+	add: IndexMap<String, String>,
 }
 
 #[derive(Clone, Debug)]
@@ -178,6 +183,16 @@ pub struct Config {
 	pub logging: crate::telemetry::log::Config,
 	pub dns: client::Config,
 	pub proxy_metadata: ProxyMetadata,
+	pub threading_mode: ThreadingMode,
+}
+
+#[derive(serde::Serialize, Copy, PartialOrd, PartialEq, Eq, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum ThreadingMode {
+	#[default]
+	Multithreaded,
+	// Experimental; do not use beyond testing
+	ThreadPerCore,
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
