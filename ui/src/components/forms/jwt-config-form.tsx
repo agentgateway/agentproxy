@@ -112,6 +112,7 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
         <Label htmlFor="jwt-issuer">JWT Issuer</Label>
         <Input
           id="jwt-issuer"
+          data-cy="jwt-issuer-input"
           value={config.issuer}
           onChange={(e) => setConfig({ ...config, issuer: e.target.value })}
           placeholder="Enter comma-separated issuers"
@@ -125,6 +126,7 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
         <Label htmlFor="jwt-audience">JWT Audience</Label>
         <Input
           id="jwt-audience"
+          data-cy="jwt-audience-input"
           value={config.audience}
           onChange={(e) => setConfig({ ...config, audience: e.target.value })}
           placeholder="Enter comma-separated audiences"
@@ -137,6 +139,7 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
       <div className="space-y-4">
         <Label>JWKS Source</Label>
         <RadioGroup
+          data-cy="jwks-source-radio-group"
           value={config.jwksSource}
           onValueChange={(value) =>
             setConfig({
@@ -148,11 +151,12 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
         >
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <RadioGroupItem value="local" id="jwks-local" />
+              <RadioGroupItem value="local" id="jwks-local" data-cy="jwks-local-radio" />
               <div className="space-y-2 flex-1">
                 <Label htmlFor="jwks-file">Local JWKS File Path</Label>
                 <Input
                   id="jwks-file"
+                  data-cy="jwks-local-file-input"
                   value={config.localJwksPath}
                   onChange={(e) =>
                     setConfig({
@@ -168,11 +172,12 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
             </div>
 
             <div className="flex items-start space-x-4">
-              <RadioGroupItem value="remote" id="jwks-remote" />
+              <RadioGroupItem value="remote" id="jwks-remote" data-cy="jwks-remote-radio" />
               <div className="space-y-2 flex-1">
                 <Label htmlFor="jwks-url">Remote JWKS URL</Label>
                 <Input
                   id="jwks-url"
+                  data-cy="jwks-remote-url-input"
                   value={config.remoteJwksUrl}
                   onChange={(e) =>
                     setConfig({
@@ -191,10 +196,10 @@ export function JWTConfigForm({ listener, onSave, onCancel }: JWTConfigFormProps
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} data-cy="jwt-config-cancel-button">
           Cancel
         </Button>
-        <Button onClick={handleSave}>Save Changes</Button>
+        <Button onClick={handleSave} data-cy="jwt-config-save-button">Save Changes</Button>
       </div>
     </div>
   );

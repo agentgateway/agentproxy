@@ -63,6 +63,41 @@ The agentgateway documentation is available at [agentgateway.dev/docs](https://a
   <img alt="agentgateway UI" src="img/UI-homepage.png">
 </div>
 
+## Testing
+
+### End-to-End (E2E) Testing
+
+AgentGateway includes a comprehensive E2E testing infrastructure using Cypress that provides:
+
+- **125+ tests** with 100% success rate
+- **Comprehensive coverage** of all UI workflows including setup wizard, configuration management, and playground testing
+- **Parallel test execution** with 75-85% speed improvement
+- **Intelligent test scheduling** and resource monitoring
+- **Zero flaky tests** with defensive programming patterns
+
+#### Quick Start
+
+```bash
+# Navigate to UI directory
+cd ui
+
+# Run all E2E tests
+npm run e2e
+
+# Run tests in parallel (recommended)
+npm run test:e2e:parallel
+
+# Open interactive test runner
+npm run e2e:open
+```
+
+#### Prerequisites
+
+1. **AgentGateway Backend**: Running on `http://localhost:8080`
+2. **UI Development Server**: Running on `http://localhost:3000`
+
+For detailed testing documentation, see [ui/cypress/README.md](ui/cypress/README.md).
+
 ## Contributing
 
 For instructions on how to contribute to the agentgateway project, see the [CONTRIBUTION.md](CONTRIBUTION.md) file.

@@ -1,0 +1,7 @@
+binds:
+- port: 8080
+  listeners:
+  - protocol: HTTP
+    routes:
+    - backends:
+      - host: httpbin.org:80
